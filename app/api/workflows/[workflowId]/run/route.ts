@@ -29,7 +29,7 @@ function validateRemoteUrl(raw: string, label: string) {
   if (!["http:", "https:"].includes(url.protocol)) throw new Error(`${label} must use HTTP or HTTPS.`)
 
   const blocked = ["localhost", "127.0.0.1", "0.0.0.0", "::1", "169.254.169.254", "metadata.google.internal"]
-  if (blocked.some((host) => url.hostname === host || url.hostname.endsWith(`.\${host}`))) {
+  if (blocked.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`))) {
     throw new Error(`${label} points to a blocked internal host.`)
   }
 
