@@ -21,8 +21,9 @@ export default function Logs() {
       .catch(() => {})
   }, [])
 
-  const clear = () => {
+  const clear = async () => {
     clearExecutions()
+    await fetch("/api/executions", { method: "DELETE" }).catch(() => {})
     setItems([])
   }
 
