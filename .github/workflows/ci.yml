@@ -22,6 +22,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Generate Prisma client
+        run: npm run db:generate
       - name: Typecheck
         run: npm run typecheck
 
