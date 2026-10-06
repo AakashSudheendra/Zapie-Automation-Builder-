@@ -353,8 +353,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
     const executionId = crypto.randomUUID()
 
     try {
-      const { workspace, user } = await getOrCreateDevelopmentWorkspace()
-      const storedWorkflow = await db.workflow.findFirst({ where: { id: workflowId, workspaceId: workspace.id } })
+      const internalSecret = request.headers.get("x-zappie-internal-secret")
+      const trustedInternal = request.headers.get("x-zappie-internal-trigger") === "webhook" && !!process.env.ZAPPIE_WEBHOOK_SECRET && internalSecret === process.env.ZAPPIE_WEBHOOK_SECRET
+      const authenticated = trustedInternal ? null : await getOrCreateDevelopmentWorkspace()
+      const storedWorkflow = authenticated
+        ? await db.workflow.findFirst({ where: { id: workflowId, workspaceId: authenticated.workspace.id } })
+        : await db.workflow.findFirst({ where: { id: workflowId, published: true } })
+
       if (storedWorkflow) {
         await db.$transaction([
           db.execution.create({
@@ -362,7 +367,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
               id: executionId,
               workspaceId: workspace.id,
               workflowId,
-              userId: user.id,
+              userId: authenticated?.user.id,
               status: "COMPLETED",
               trigger: "Manual test",
               startedAt: new Date(startedAt),
