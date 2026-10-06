@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
-import { getOrCreateDevelopmentWorkspace } from "@/lib/server-workspaces"
 
 export async function POST(request: Request, { params }: { params: Promise<{ workflowId: string }> }) {
   try {
@@ -12,9 +11,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
       return NextResponse.json({ ok: false, error: "Invalid webhook secret." }, { status: 401 })
     }
 
-    const { workspace } = await getOrCreateDevelopmentWorkspace()
     const workflow = await db.workflow.findFirst({
-      where: { id: workflowId, workspaceId: workspace.id, published: true },
+      where: { id: workflowId, published: true },
     })
 
     if (!workflow) {
@@ -32,6 +30,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
       headers: {
         "content-type": "application/json",
         "x-zappie-internal-trigger": "webhook",
+        "x-zappie-internal-secret": secret,
       },
       body: JSON.stringify({ payload }),
     })
@@ -46,6 +45,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
   }
 }
 
-export async function GET(request: Request, context: { params: Promise<{ workflowId: string }> }) {
-  return POST(new Request(request.url, { method: "POST", headers: request.headers, body: JSON.stringify({}) }), context)
+export async function GET(_: Request, { params }: { params: Promise<{ workflowId: string }> }) {
+  const { workflowId } = await params
+  return NextResponse.json({
+    ok: true,
+    method: "POST",
+    endpoint: `/api/webhooks/${workflowId}`,
+    requiredHeader: "x-zappie-webhook-secret",
+  })
 }
