@@ -23,7 +23,9 @@ Zappie is a Next.js automation-builder application inspired by workflow products
   - Delay
 - Functional workflow templates
 - Connection workspace
-- Persistent browser workspace state
+- PostgreSQL persistence through Prisma with localStorage fallback
+- Workspace membership model and server-side ownership checks
+- Password authentication with hashed credentials and HttpOnly sessions
 - Test execution API
 - Real HTTP request execution
 - Optional Slack incoming-webhook execution
@@ -76,6 +78,20 @@ npm run start
 ```
 
 The repository does not currently commit a package lockfile, so use `npm install` rather than `npm ci` for the current project. Verify the latest branch with these commands. The GitHub integration available to this development session cannot execute npm against the remote repository, so a successful local command run is the final environment-specific verification.
+
+## Database and authentication
+
+Set `DATABASE_URL` in `.env.local`, then run:
+
+```bash
+npm install
+npm run db:generate
+npm run db:migrate
+```
+
+The application creates a development workspace automatically when no authenticated session exists outside production. In production, workspace APIs require an authenticated server session. Accounts use bcrypt password hashing and random server-side session tokens stored only as SHA-256 hashes.
+
+The current authentication implementation is intentionally provider-independent. OAuth/SSO can be added later without changing the workspace data model.
 
 ## Optional email configuration
 
