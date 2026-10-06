@@ -134,7 +134,49 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
 
   const startedAt = new Date().toISOString()
   const payload = (body.payload ?? {}) as Record<string, unknown>
-  const ordered = [...workflow.nodes].sort((a, b) => a.x - b.x)
+  const nodeMap = new Map(workflow.nodes.map((node) => [node.id, node]))
+  const outgoing = new Map<string, string[]>()
+  for (const edge of workflow.edges) {
+    if (!nodeMap.has(edge.source) || !nodeMap.has(edge.target)) continue
+    const targets = outgoing.get(edge.source) ?? []
+    targets.push(edge.target)
+    outgoing.set(edge.source, targets)
+  }
+
+  const trigger = workflow.nodes.find((node) => node.type === "trigger")
+  if (!trigger) {
+    return NextResponse.json({ ok: false, error: "Workflow must contain a trigger." }, { status: 400 })
+  }
+
+  const ordered: typeof workflow.nodes = []
+  const visited = new Set<string>()
+  let currentNodeId: string | undefined = trigger.id
+
+  while (currentNodeId) {
+    if (visited.has(currentNodeId)) {
+      return NextResponse.json({ ok: false, error: "Workflow contains a cycle." }, { status: 400 })
+    }
+
+    const currentNode = nodeMap.get(currentNodeId)
+    if (!currentNode) {
+      return NextResponse.json({ ok: false, error: "Workflow contains an invalid connection." }, { status: 400 })
+    }
+
+    visited.add(currentNodeId)
+    ordered.push(currentNode)
+    const targets = outgoing.get(currentNodeId) ?? []
+
+    if (targets.length > 1) {
+      return NextResponse.json({ ok: false, error: "Branching workflows are not supported by this execution engine yet." }, { status: 400 })
+    }
+
+    currentNodeId = targets[0]
+  }
+
+  if (ordered.length !== workflow.nodes.length) {
+    return NextResponse.json({ ok: false, error: "Every workflow step must be connected to the trigger." }, { status: 400 })
+  }
+
   const trace: ExecutionStep[] = []
   let current: unknown = payload
 
