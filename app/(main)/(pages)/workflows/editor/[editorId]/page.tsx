@@ -7,6 +7,8 @@ import Link from "next/link"
 import WorkflowConfigForm from "@/components/global/workflow-config-form"
 import {
   getWorkflow,
+  getWorkflowFromServer,
+  syncWorkflowToServer,
   NODE_LIBRARY,
   saveExecution,
   upsertWorkflow,
@@ -31,34 +33,49 @@ export default function Editor() {
   const [dragging, setDragging] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null)
 
   useEffect(() => {
-    const w = getWorkflow(params.editorId)
-    if (!w) {
-      router.replace("/workflows")
-      return
-    }
+    let active = true
 
-    const triggerIds = new Set<string>()
-    const duplicateTriggerIds = new Set<string>()
-    for (const item of w.nodes) {
-      if (item.type !== "trigger") continue
-      if (triggerIds.size === 0) triggerIds.add(item.id)
-      else duplicateTriggerIds.add(item.id)
-    }
+    const load = async () => {
+      const local = getWorkflow(params.editorId)
+      const remote = await getWorkflowFromServer(params.editorId)
+      const w = remote ?? local
 
-    if (duplicateTriggerIds.size) {
-      const cleaned = {
-        ...w,
-        nodes: w.nodes.filter((item) => !duplicateTriggerIds.has(item.id)),
-        edges: w.edges.filter((edge) => !duplicateTriggerIds.has(edge.source) && !duplicateTriggerIds.has(edge.target)),
-        updatedAt: new Date().toISOString(),
+      if (!w) {
+        router.replace("/workflows")
+        return
       }
-      upsertWorkflow(cleaned)
-      setFlow(cleaned)
-      setMessage("Removed duplicate trigger steps. A workflow can have one trigger.")
-      return
+
+      const triggerIds = new Set<string>()
+      const duplicateTriggerIds = new Set<string>()
+      for (const item of w.nodes) {
+        if (item.type !== "trigger") continue
+        if (triggerIds.size === 0) triggerIds.add(item.id)
+        else duplicateTriggerIds.add(item.id)
+      }
+
+      if (duplicateTriggerIds.size) {
+        const cleaned = {
+          ...w,
+          nodes: w.nodes.filter((item) => !duplicateTriggerIds.has(item.id)),
+          edges: w.edges.filter((edge) => !duplicateTriggerIds.has(edge.source) && !duplicateTriggerIds.has(edge.target)),
+          updatedAt: new Date().toISOString(),
+        }
+        upsertWorkflow(cleaned)
+        await syncWorkflowToServer(cleaned)
+        if (active) {
+          setFlow(cleaned)
+          setMessage("Removed duplicate trigger steps. A workflow can have one trigger.")
+        }
+        return
+      }
+
+      if (active) setFlow(w)
     }
 
-    setFlow(w)
+    load()
+    return () => {
+      active = false
+    }
   }, [params.editorId, router])
 
   useEffect(() => {
@@ -116,7 +133,9 @@ export default function Editor() {
   }
 
   const save = () => {
-    upsertWorkflow({ ...flow, updatedAt: new Date().toISOString() })
+    const updated = { ...flow, updatedAt: new Date().toISOString() }
+    upsertWorkflow(updated)
+    void syncWorkflowToServer(updated)
     setSaved(true)
     setMessage("Workflow saved")
   }
@@ -209,6 +228,7 @@ export default function Editor() {
       const now = { ...flow, runs: flow.runs + 1, status: "active" as const, updatedAt: new Date().toISOString() }
       setFlow(now)
       upsertWorkflow(now)
+      void syncWorkflowToServer(now)
       setSaved(true)
       saveExecution({
         id: result.executionId,
@@ -271,6 +291,7 @@ export default function Editor() {
               const updated = { ...flow, published: next, status: next ? "active" : "draft" as const }
               setFlow(updated)
               upsertWorkflow(updated)
+              void syncWorkflowToServer(updated)
               setSaved(true)
               setMessage(next ? "Workflow published" : "Workflow unpublished")
             }}
