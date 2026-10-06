@@ -114,6 +114,8 @@ export default function Editor() {
     }
     const id = Math.random().toString(36).slice(2, 9)
     const parent = selected ? flow.nodes.find((item) => item.id === selected) : flow.nodes[flow.nodes.length - 1]
+    const outgoing = parent ? flow.edges.find((edge) => edge.source === parent.id) : undefined
+    const downstream = outgoing ? flow.nodes.find((item) => item.id === outgoing.target) : undefined
     const n: WorkflowNode = {
       id,
       type,
@@ -124,17 +126,33 @@ export default function Editor() {
       config: {},
     }
 
-    update({
-      nodes: [...flow.nodes, n],
-      edges: parent ? [...flow.edges, { id: "e" + id, source: parent.id, target: id }] : flow.edges,
-    })
+    const nextEdges = parent
+      ? [
+          ...flow.edges.filter((edge) => edge.id !== outgoing?.id),
+          { id: "e" + id, source: parent.id, target: id },
+          ...(downstream ? [{ id: "e" + id + "-next", source: id, target: downstream.id }] : []),
+        ]
+      : flow.edges
+
+    update({ nodes: [...flow.nodes, n], edges: nextEdges })
     setSelected(id)
   }
 
   const remove = (id: string) => {
+    const incoming = flow.edges.filter((edge) => edge.target === id)
+    const outgoing = flow.edges.filter((edge) => edge.source === id)
+    const preservedEdges = flow.edges.filter((edge) => edge.source !== id && edge.target !== id)
+    const reconnect = incoming.flatMap((inEdge) =>
+      outgoing.map((outEdge) => ({
+        id: `reconnect-${inEdge.source}-${outEdge.target}`,
+        source: inEdge.source,
+        target: outEdge.target,
+      })),
+    )
+
     update({
       nodes: flow.nodes.filter((item) => item.id !== id),
-      edges: flow.edges.filter((edge) => edge.source !== id && edge.target !== id),
+      edges: [...preservedEdges, ...reconnect.filter((edge, index, list) => list.findIndex((item) => item.source === edge.source && item.target === edge.target) === index)],
     })
     setSelected(null)
   }
