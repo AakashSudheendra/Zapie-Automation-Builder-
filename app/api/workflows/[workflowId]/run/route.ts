@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
 import { getOrCreateDevelopmentWorkspace } from "@/lib/server-workspaces"
+import { decryptSecret } from "@/lib/credentials"
 import type { Workflow, ExecutionStep } from "@/lib/workflow-store"
 
 function interpolate(value: string, payload: Record<string, unknown>) {
@@ -69,9 +70,26 @@ async function executeAction(title: string, config: Record<string, string>, inpu
   }
 
   if (title === "Slack Message") {
-    if (!config.webhookUrl) return { simulated: true, reason: "Add a Slack incoming webhook URL.", channel: config.channel || "" }
+    let webhookValue = config.webhookUrl
 
-    const webhookUrl = validateRemoteUrl(config.webhookUrl, "Slack webhook URL")
+    if (config.credentialId) {
+      try {
+        const { workspace } = await getOrCreateDevelopmentWorkspace()
+        const credential = await db.credential.findFirst({
+          where: { id: config.credentialId, workspaceId: workspace.id, provider: "slack" },
+        })
+        if (credential) {
+          const secret = decryptSecret<Record<string, string>>(credential.encrypted)
+          webhookValue = secret.webhookUrl || secret.url || secret.value
+        }
+      } catch {
+        // Fall back to an explicitly configured webhook URL.
+      }
+    }
+
+    if (!webhookValue) return { simulated: true, reason: "Connect a Slack credential or add an incoming webhook URL.", channel: config.channel || "" }
+
+    const webhookUrl = validateRemoteUrl(webhookValue, "Slack webhook URL")
     const message = interpolate(config.message || "Zappie workflow executed.", input)
     const response = await fetchWithTimeout(webhookUrl, {
       method: "POST",
