@@ -1,2 +1,373 @@
-"use client";import {useEffect,useMemo,useState} from "react";import {useParams,useRouter} from "next/navigation";import {ArrowLeft,Check,Play,Plus,Save,Trash2,X} from "lucide-react";import Link from "next/link";import WorkflowConfigForm from "@/components/global/workflow-config-form";import {getWorkflow,NODE_LIBRARY,saveExecution,upsertWorkflow,type Workflow,type WorkflowNode,type WorkflowNodeType} from "@/lib/workflow-store";
-export default function Editor(){const params=useParams<{editorId:string}>();const router=useRouter();const [flow,setFlow]=useState<Workflow|null>(null);const [selected,setSelected]=useState<string|null>(null);const [saved,setSaved]=useState(true);const [running,setRunning]=useState(false);const [message,setMessage]=useState("");useEffect(()=>{const w=getWorkflow(params.editorId);if(!w){router.replace("/workflows");return}setFlow(w)},[params.editorId,router]);const node=useMemo(()=>flow?.nodes.find(n=>n.id===selected),[flow,selected]);if(!flow)return <div className="p-8 text-white/50">Loading workflow…</div>;const update=(patch:Partial<Workflow>)=>{setFlow({...flow,...patch,updatedAt:new Date().toISOString()});setSaved(false)};const save=()=>{upsertWorkflow({...flow,updatedAt:new Date().toISOString()});setSaved(true)};const addNode=(type:WorkflowNodeType,title:string,description:string)=>{const id=Math.random().toString(36).slice(2,9);const last=flow.nodes[flow.nodes.length-1];const n:WorkflowNode={id,type,title,description,x:(last?.x??80)+330,y:last?.y??100,config:{}};update({nodes:[...flow.nodes,n],edges:last?[...flow.edges,{id:"e"+id,source:last.id,target:id}]:flow.edges});setSelected(id)};const remove=(id:string)=>{update({nodes:flow.nodes.filter(n=>n.id!==id),edges:flow.edges.filter(e=>e.source!==id&&e.target!==id)});setSelected(null)};const run=async()=>{setRunning(true);setMessage("");try{const response=await fetch(`/api/workflows/${flow.id}/run`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({workflow:flow,payload:{source:"manual-test"}})});const result=await response.json();if(!response.ok)throw new Error(result.error||"Execution failed");const now={...flow,runs:flow.runs+1,status:"active" as const,updatedAt:new Date().toISOString()};setFlow(now);upsertWorkflow(now);setSaved(true);saveExecution({id:result.executionId,workflowId:flow.id,workflowName:flow.name,status:"completed",startedAt:result.triggeredAt,finishedAt:new Date().toISOString(),trigger:"Manual test",steps:result.trace});setMessage(`Run ${result.executionId.slice(0,8)} completed • ${result.trace.length} steps`)}catch(error){setMessage(error instanceof Error?error.message:"Execution failed")}finally{setRunning(false)}};return <div className="flex h-screen flex-col overflow-hidden bg-[#070709]"><header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-4"><div className="flex items-center gap-3"><Link href="/workflows" className="rounded-lg p-2 text-white/50 hover:bg-white/10 hover:text-white"><ArrowLeft size={18}/></Link><div><input value={flow.name} onChange={e=>update({name:e.target.value})} className="w-52 bg-transparent text-sm font-semibold outline-none"/><p className="text-[11px] text-white/30">{saved?"Saved":"Unsaved changes"}</p></div></div><div className="flex items-center gap-2"><button onClick={run} className="flex items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-300"><Play size={14}/>{running?"Running…":"Test run"}</button><button onClick={()=>{update({published:!flow.published,status:!flow.published?"active":"draft"});save()}} className={`rounded-lg px-3 py-2 text-xs font-semibold ${flow.published?"bg-emerald-500/15 text-emerald-300":"bg-white/10 text-white"}`}>{flow.published?"Published":"Publish"}</button><button onClick={save} disabled={saved} className="flex items-center gap-2 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold disabled:opacity-40"><Save size={14}/>Save</button></div></header>{message&&<div className="border-b border-white/10 bg-white/[.03] px-5 py-2 text-xs text-white/50">{message}</div>}<div className="flex min-h-0 flex-1"><aside className="w-72 shrink-0 overflow-y-auto border-r border-white/10 bg-black/40 p-4"><p className="mb-3 text-xs font-semibold uppercase tracking-widest text-white/30">Add step</p><div className="space-y-2">{NODE_LIBRARY.map(item=><button key={item.title} onClick={()=>addNode(item.type,item.title,item.description)} className="w-full rounded-xl border border-white/10 bg-white/[.03] p-3 text-left hover:border-violet-400/30 hover:bg-violet-500/5"><div className="flex items-center gap-2"><span className="grid h-7 w-7 place-items-center rounded-lg bg-violet-500/10 text-xs text-violet-300"><Plus size={14}/></span><span className="text-sm font-medium">{item.title}</span></div><p className="mt-2 text-xs leading-5 text-white/35">{item.description}</p></button>)}</div></aside><main className="relative flex-1 overflow-auto bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,.07)_1px,transparent_0)] [background-size:24px_24px]"><div className="relative min-h-[900px] min-w-[1200px] p-10">{flow.nodes.map((n,i)=><div key={n.id} className="absolute" style={{left:n.x,top:n.y}}>{i>0&&<div className="absolute -left-[330px] top-14 h-px w-[330px] bg-violet-400/30"/>}<button onClick={()=>setSelected(n.id)} className={`relative w-64 rounded-2xl border p-4 text-left shadow-2xl transition ${selected===n.id?"border-violet-400 bg-violet-500/10":"border-white/10 bg-[#111116] hover:border-white/25"}`}><div className="flex items-start justify-between"><span className="text-[10px] font-semibold uppercase tracking-widest text-violet-300">{n.type}</span>{selected===n.id&&<Check size={14} className="text-violet-300"/>}</div><h3 className="mt-2 text-sm font-semibold">{n.title}</h3><p className="mt-1 text-xs leading-5 text-white/35">{n.description}</p></button></div>)}</div></main>{selected&&node&&<aside className="w-80 shrink-0 overflow-y-auto border-l border-white/10 bg-black/60 p-5"><div className="flex items-center justify-between"><div><p className="text-xs uppercase tracking-widest text-violet-300">{node.type}</p><h2 className="mt-1 font-semibold">{node.title}</h2></div><button onClick={()=>setSelected(null)} className="text-white/40"><X size={18}/></button></div><div className="mt-6 space-y-4"><label className="block text-xs text-white/40">Description<input value={node.description} onChange={e=>update({nodes:flow.nodes.map(n=>n.id===node.id?{...n,description:e.target.value}:n)})} className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:border-violet-400/50"/></label><div><p className="mb-2 text-xs text-white/40">Configuration</p><WorkflowConfigForm node={node} onChange={(config)=>update({nodes:flow.nodes.map(n=>n.id===node.id?{...n,config}:n)})}/></div><button onClick={()=>remove(node.id)} className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-400/20 bg-red-500/5 py-2.5 text-xs text-red-300"><Trash2 size={14}/>Remove step</button></div></aside>}</div></div>}
+"use client"
+
+import { useEffect, useMemo, useRef, useState } from "react"
+import { ArrowLeft, Check, ChevronDown, GripVertical, Minus, Play, Plus, Save, Trash2, X, ZoomIn } from "lucide-react"
+import Link from "next/link"
+import WorkflowConfigForm from "@/components/global/workflow-config-form"
+import {
+  getWorkflow,
+  NODE_LIBRARY,
+  saveExecution,
+  upsertWorkflow,
+  type Workflow,
+  type WorkflowNode,
+  type WorkflowNodeType,
+} from "@/lib/workflow-store"
+
+const NODE_W = 256
+const NODE_H = 112
+
+export default function Editor() {
+  const params = useParamsSafe()
+  const router = useRouterSafe()
+  const canvasRef = useRef<HTMLDivElement>(null)
+  const [flow, setFlow] = useState<Workflow | null>(null)
+  const [selected, setSelected] = useState<string | null>(null)
+  const [saved, setSaved] = useState(true)
+  const [running, setRunning] = useState(false)
+  const [message, setMessage] = useState("")
+  const [zoom, setZoom] = useState(1)
+  const [dragging, setDragging] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null)
+
+  useEffect(() => {
+    const w = getWorkflow(params.editorId)
+    if (!w) {
+      router.replace("/workflows")
+      return
+    }
+    setFlow(w)
+  }, [params.editorId, router])
+
+  useEffect(() => {
+    if (!dragging || !flow) return
+
+    const move = (event: PointerEvent) => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const rect = canvas.getBoundingClientRect()
+      const x = Math.max(24, (event.clientX - rect.left + canvas.scrollLeft) / zoom - dragging.offsetX)
+      const y = Math.max(24, (event.clientY - rect.top + canvas.scrollTop) / zoom - dragging.offsetY)
+
+      setFlow((current) =>
+        current
+          ? {
+              ...current,
+              updatedAt: new Date().toISOString(),
+              nodes: current.nodes.map((node) => (node.id === dragging.id ? { ...node, x, y } : node)),
+            }
+          : current,
+      )
+      setSaved(false)
+    }
+
+    const up = () => setDragging(null)
+    window.addEventListener("pointermove", move)
+    window.addEventListener("pointerup", up)
+    return () => {
+      window.removeEventListener("pointermove", move)
+      window.removeEventListener("pointerup", up)
+    }
+  }, [dragging, flow, zoom])
+
+  const node = useMemo(() => flow?.nodes.find((item) => item.id === selected), [flow, selected])
+
+  if (!flow) return <div className="p-8 text-white/50">Loading workflow…</div>
+
+  const update = (patch: Partial<Workflow>) => {
+    setFlow({ ...flow, ...patch, updatedAt: new Date().toISOString() })
+    setSaved(false)
+  }
+
+  const save = () => {
+    upsertWorkflow({ ...flow, updatedAt: new Date().toISOString() })
+    setSaved(true)
+    setMessage("Workflow saved")
+  }
+
+  const addNode = (type: WorkflowNodeType, title: string, description: string) => {
+    const id = Math.random().toString(36).slice(2, 9)
+    const parent = selected ? flow.nodes.find((item) => item.id === selected) : flow.nodes[flow.nodes.length - 1]
+    const n: WorkflowNode = {
+      id,
+      type,
+      title,
+      description,
+      x: Math.max(40, (parent?.x ?? 80) + 330),
+      y: parent?.y ?? 100,
+      config: {},
+    }
+
+    update({
+      nodes: [...flow.nodes, n],
+      edges: parent ? [...flow.edges, { id: "e" + id, source: parent.id, target: id }] : flow.edges,
+    })
+    setSelected(id)
+  }
+
+  const remove = (id: string) => {
+    update({
+      nodes: flow.nodes.filter((item) => item.id !== id),
+      edges: flow.edges.filter((edge) => edge.source !== id && edge.target !== id),
+    })
+    setSelected(null)
+  }
+
+  const duplicate = (source: WorkflowNode) => {
+    const id = Math.random().toString(36).slice(2, 9)
+    const copy: WorkflowNode = { ...source, id, x: source.x + 40, y: source.y + 150 }
+    update({ nodes: [...flow.nodes, copy] })
+    setSelected(id)
+  }
+
+  const startDrag = (event: React.PointerEvent, item: WorkflowNode) => {
+    if ((event.target as HTMLElement).closest("button")) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const pointerX = (event.clientX - rect.left + canvas.scrollLeft) / zoom
+    const pointerY = (event.clientY - rect.top + canvas.scrollTop) / zoom
+    setSelected(item.id)
+    setDragging({ id: item.id, offsetX: pointerX - item.x, offsetY: pointerY - item.y })
+  }
+
+  const run = async () => {
+    setRunning(true)
+    setMessage("")
+    try {
+      const response = await fetch(`/api/workflows/${flow.id}/run`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workflow: flow, payload: { source: "manual-test", name: "Test lead", status: "approved" } }),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || "Execution failed")
+
+      const now = { ...flow, runs: flow.runs + 1, status: "active" as const, updatedAt: new Date().toISOString() }
+      setFlow(now)
+      upsertWorkflow(now)
+      setSaved(true)
+      saveExecution({
+        id: result.executionId,
+        workflowId: flow.id,
+        workflowName: flow.name,
+        status: "completed",
+        startedAt: result.triggeredAt,
+        finishedAt: new Date().toISOString(),
+        trigger: "Manual test",
+        steps: result.trace,
+      })
+      setMessage(`Run ${result.executionId.slice(0, 8)} completed • ${result.trace.length} steps`)
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Execution failed")
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const nodeMap = new Map(flow.nodes.map((item) => [item.id, item]))
+  const canvasWidth = Math.max(1400, ...flow.nodes.map((item) => item.x + NODE_W + 160))
+  const canvasHeight = Math.max(800, ...flow.nodes.map((item) => item.y + NODE_H + 160))
+
+  return (
+    <div className="flex h-screen min-w-0 flex-col overflow-hidden bg-[#070709] text-white">
+      <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-3 sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/workflows" className="rounded-lg p-2 text-white/50 hover:bg-white/10 hover:text-white">
+            <ArrowLeft size={18} />
+          </Link>
+          <div className="min-w-0">
+            <input
+              value={flow.name}
+              onChange={(event) => update({ name: event.target.value })}
+              className="w-40 bg-transparent text-sm font-semibold outline-none sm:w-64"
+            />
+            <p className="text-[11px] text-white/30">{saved ? "All changes saved" : "Unsaved changes"}</p>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={run}
+            disabled={running}
+            className="flex items-center gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-300 disabled:opacity-50"
+          >
+            <Play size={14} />
+            {running ? "Running…" : "Test run"}
+          </button>
+          <button
+            onClick={() => {
+              const next = !flow.published
+              setFlow({ ...flow, published: next, status: next ? "active" : "draft" })
+              upsertWorkflow({ ...flow, published: next, status: next ? "active" : "draft" })
+              setSaved(true)
+              setMessage(next ? "Workflow published" : "Workflow unpublished")
+            }}
+            className={`rounded-lg px-3 py-2 text-xs font-semibold ${flow.published ? "bg-emerald-500/15 text-emerald-300" : "bg-white/10 text-white"}`}
+          >
+            {flow.published ? "Published" : "Publish"}
+          </button>
+          <button
+            onClick={save}
+            disabled={saved}
+            className="flex items-center gap-2 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold disabled:opacity-40"
+          >
+            <Save size={14} />
+            Save
+          </button>
+        </div>
+      </header>
+
+      {message && <div className="border-b border-white/10 bg-white/[.03] px-5 py-2 text-xs text-white/50">{message}</div>}
+
+      <div className="flex min-h-0 flex-1">
+        <aside className="hidden w-56 shrink-0 overflow-y-auto border-r border-white/10 bg-black/40 p-3 md:block">
+          <p className="mb-3 px-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30">Step library</p>
+          <div className="space-y-2">
+            {NODE_LIBRARY.map((item) => (
+              <button
+                key={item.title}
+                onClick={() => addNode(item.type, item.title, item.description)}
+                className="group w-full rounded-xl border border-white/10 bg-white/[.03] p-3 text-left hover:border-violet-400/30 hover:bg-violet-500/5"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="grid h-7 w-7 place-items-center rounded-lg bg-violet-500/10 text-violet-300">
+                    <Plus size={14} />
+                  </span>
+                  <span className="text-xs font-medium">{item.title}</span>
+                </div>
+                <p className="mt-2 text-[11px] leading-4 text-white/30">{item.description}</p>
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <main ref={canvasRef} className="relative min-w-0 flex-1 overflow-auto bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,.07)_1px,transparent_0)] [background-size:24px_24px]">
+          <div className="sticky left-4 top-4 z-20 flex w-fit items-center gap-1 rounded-xl border border-white/10 bg-black/70 p-1 backdrop-blur">
+            <button onClick={() => setZoom((value) => Math.max(0.65, value - 0.1))} className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white"><Minus size={14} /></button>
+            <span className="w-12 text-center text-[10px] text-white/50">{Math.round(zoom * 100)}%</span>
+            <button onClick={() => setZoom((value) => Math.min(1.35, value + 0.1))} className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white"><ZoomIn size={14} /></button>
+          </div>
+
+          <div className="relative origin-top-left" style={{ width: canvasWidth * zoom, height: canvasHeight * zoom }}>
+            <div className="absolute left-0 top-0 origin-top-left" style={{ width: canvasWidth, height: canvasHeight, transform: `scale(${zoom})` }}>
+              <svg className="pointer-events-none absolute inset-0" width={canvasWidth} height={canvasHeight}>
+                {flow.edges.map((edge) => {
+                  const source = nodeMap.get(edge.source)
+                  const target = nodeMap.get(edge.target)
+                  if (!source || !target) return null
+                  const x1 = source.x + NODE_W
+                  const y1 = source.y + NODE_H / 2
+                  const x2 = target.x
+                  const y2 = target.y + NODE_H / 2
+                  const curve = Math.max(50, Math.abs(x2 - x1) / 2)
+                  return (
+                    <g key={edge.id}>
+                      <path d={`M ${x1} ${y1} C ${x1 + curve} ${y1}, ${x2 - curve} ${y2}, ${x2} ${y2}`} fill="none" stroke="rgba(139,92,246,.45)" strokeWidth="2" />
+                      <circle cx={x2} cy={y2} r="4" fill="rgba(167,139,250,.9)" />
+                    </g>
+                  )
+                })}
+              </svg>
+
+              {flow.nodes.map((item) => (
+                <div
+                  key={item.id}
+                  className="absolute"
+                  style={{ left: item.x, top: item.y, width: NODE_W }}
+                  onPointerDown={(event) => startDrag(event, item)}
+                >
+                  <div
+                    className={`relative cursor-grab rounded-2xl border p-4 shadow-2xl transition active:cursor-grabbing ${
+                      selected === item.id
+                        ? "border-violet-400 bg-violet-500/10 shadow-violet-500/10"
+                        : "border-white/10 bg-[#111116] hover:border-white/25"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2">
+                        <GripVertical size={13} className="text-white/20" />
+                        <span className="text-[10px] font-semibold uppercase tracking-widest text-violet-300">{item.type}</span>
+                      </div>
+                      {selected === item.id && <Check size={14} className="text-violet-300" />}
+                    </div>
+                    <h3 className="mt-2 text-sm font-semibold">{item.title}</h3>
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/35">{item.description}</p>
+                    <button
+                      onClick={() => setSelected(item.id)}
+                      className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full border border-white/10 bg-[#17171d] text-white/50 hover:text-white"
+                      aria-label="Select step"
+                    >
+                      <ChevronDown size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
+
+        {selected && node && (
+          <aside className="w-72 shrink-0 overflow-y-auto border-l border-white/10 bg-black/70 p-4 lg:w-80">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-violet-300">{node.type}</p>
+                <h2 className="mt-1 text-sm font-semibold">{node.title}</h2>
+              </div>
+              <button onClick={() => setSelected(null)} className="rounded-lg p-1 text-white/40 hover:bg-white/10 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              <label className="block text-xs text-white/40">
+                Description
+                <input
+                  value={node.description}
+                  onChange={(event) =>
+                    update({ nodes: flow.nodes.map((item) => (item.id === node.id ? { ...item, description: event.target.value } : item)) })
+                  }
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm outline-none focus:border-violet-400/50"
+                />
+              </label>
+
+              <div>
+                <p className="mb-2 text-xs text-white/40">Configuration</p>
+                <WorkflowConfigForm
+                  node={node}
+                  onChange={(config) => update({ nodes: flow.nodes.map((item) => (item.id === node.id ? { ...item, config } : item)) })}
+                />
+              </div>
+
+              <button
+                onClick={() => duplicate(node)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[.04] py-2.5 text-xs text-white/70 hover:bg-white/[.08]"
+              >
+                <Plus size={14} />
+                Duplicate step
+              </button>
+
+              <button
+                onClick={() => remove(node.id)}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-red-400/20 bg-red-500/5 py-2.5 text-xs text-red-300"
+              >
+                <Trash2 size={14} />
+                Remove step
+              </button>
+            </div>
+          </aside>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// Small wrappers keep the editor compatible with the existing Next.js client build.
+function useParamsSafe() {
+  const { useParams } = require("next/navigation") as typeof import("next/navigation")
+  return useParams<{ editorId: string }>()
+}
+
+function useRouterSafe() {
+  const { useRouter } = require("next/navigation") as typeof import("next/navigation")
+  return useRouter()
+}
