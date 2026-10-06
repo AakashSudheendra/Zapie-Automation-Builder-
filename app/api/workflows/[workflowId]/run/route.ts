@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server"
+import { db } from "@/lib/db"
+import { getOrCreateDevelopmentWorkspace } from "@/lib/server-workspaces"
 import type { Workflow, ExecutionStep } from "@/lib/workflow-store"
 
 function interpolate(value: string, payload: Record<string, unknown>) {
@@ -118,10 +120,45 @@ async function executeAction(title: string, config: Record<string, string>, inpu
 export async function POST(request: Request, { params }: { params: Promise<{ workflowId: string }> }) {
   const { workflowId } = await params
   const body = await request.json().catch(() => ({}))
-  const workflow = body.workflow as Workflow | undefined
+  const payload = (body.payload ?? {}) as Record<string, unknown>
+  let workflow = body.workflow as Workflow | undefined
+
+  try {
+    const { workspace } = await getOrCreateDevelopmentWorkspace()
+    const stored = await db.workflow.findFirst({
+      where: { id: workflowId, workspaceId: workspace.id },
+      include: { nodes: true, edges: { include: { source: true, target: true } } },
+    })
+
+    if (!stored) {
+      return NextResponse.json({ ok: false, error: "Workflow not found." }, { status: 404 })
+    }
+
+    workflow = {
+      id: stored.id,
+      name: stored.name,
+      description: stored.description,
+      published: stored.published,
+      updatedAt: stored.updatedAt.toISOString(),
+      runs: stored.runs,
+      status: stored.status.toLowerCase() as Workflow["status"],
+      nodes: stored.nodes.map((node) => ({
+        id: node.nodeKey,
+        type: node.type.toLowerCase() as Workflow["nodes"][number]["type"],
+        title: node.title,
+        description: node.description,
+        x: node.x,
+        y: node.y,
+        config: (node.config ?? {}) as Record<string, string>,
+      })),
+      edges: stored.edges.map((edge) => ({ id: edge.id, source: edge.source.nodeKey, target: edge.target.nodeKey })),
+    }
+  } catch {
+    // Local development remains usable before DATABASE_URL is configured.
+  }
 
   if (!workflow || workflow.id !== workflowId) {
-    return NextResponse.json({ ok: false, error: "A workflow definition is required." }, { status: 400 })
+    return NextResponse.json({ ok: false, error: "Workflow definition is required." }, { status: 400 })
   }
 
   if (!workflow.nodes.length) {
@@ -133,7 +170,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
   }
 
   const startedAt = new Date().toISOString()
-  const payload = (body.payload ?? {}) as Record<string, unknown>
   const nodeMap = new Map(workflow.nodes.map((node) => [node.id, node]))
   const outgoing = new Map<string, string[]>()
   for (const edge of workflow.edges) {
@@ -243,10 +279,50 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
       current = output
     }
 
+    const executionId = crypto.randomUUID()
+
+    try {
+      const { workspace, user } = await getOrCreateDevelopmentWorkspace()
+      const storedWorkflow = await db.workflow.findFirst({ where: { id: workflowId, workspaceId: workspace.id } })
+      if (storedWorkflow) {
+        await db.$transaction([
+          db.execution.create({
+            data: {
+              id: executionId,
+              workspaceId: workspace.id,
+              workflowId,
+              userId: user.id,
+              status: "COMPLETED",
+              trigger: "Manual test",
+              startedAt: new Date(startedAt),
+              finishedAt: new Date(),
+              steps: {
+                create: trace.map((step) => ({
+                  step: step.step,
+                  nodeId: step.nodeId,
+                  title: step.title,
+                  type: step.type.toUpperCase() as any,
+                  status: step.status,
+                  startedAt: new Date(step.startedAt),
+                  finishedAt: new Date(step.finishedAt),
+                  input: step.input === undefined ? undefined : JSON.parse(JSON.stringify(step.input)),
+                  output: step.output === undefined ? undefined : JSON.parse(JSON.stringify(step.output)),
+                  error: step.error,
+                })),
+              },
+            },
+          }),
+          db.workflow.update({ where: { id: workflowId }, data: { runs: { increment: 1 } } }),
+        ])
+      }
+    } catch {
+      // Execution remains available locally even if persistence is unavailable.
+    }
+
     return NextResponse.json({
       ok: true,
       workflowId,
-      executionId: crypto.randomUUID(),
+      executionId,
       status: "completed",
       triggeredAt: startedAt,
       trace,
