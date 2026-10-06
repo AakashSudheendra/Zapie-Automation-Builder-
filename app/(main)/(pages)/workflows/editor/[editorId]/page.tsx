@@ -101,6 +101,20 @@ export default function Editor() {
     setSaved(false)
   }
 
+  const validationError = () => {
+    const triggers = flow.nodes.filter((item) => item.type === "trigger")
+    if (triggers.length !== 1) return "A workflow must have exactly one trigger."
+    if (flow.nodes.length > 1 && flow.edges.length !== flow.nodes.length - 1) return "Connect every step into one workflow path before publishing."
+    const reachable = new Set<string>()
+    let current: string | undefined = triggers[0].id
+    while (current && !reachable.has(current)) {
+      reachable.add(current)
+      current = flow.edges.find((edge) => edge.source === current)?.target
+    }
+    if (reachable.size !== flow.nodes.length) return "Every step must be connected to the trigger."
+    return null
+  }
+
   const save = () => {
     upsertWorkflow({ ...flow, updatedAt: new Date().toISOString() })
     setSaved(true)
@@ -176,6 +190,11 @@ export default function Editor() {
   }
 
   const run = async () => {
+    const error = validationError()
+    if (error) {
+      setMessage(error)
+      return
+    }
     setRunning(true)
     setMessage("")
     try {
@@ -230,7 +249,7 @@ export default function Editor() {
           </div>
         </div>
 
-        <div className="flex min-w-0 shrink-0 items-center gap-2 overflow-x-auto pb-px">
+        <div className="flex min-w-0 max-w-[48%] shrink items-center gap-2 overflow-x-auto pb-px">
           <button
             onClick={run}
             disabled={running}
@@ -241,9 +260,17 @@ export default function Editor() {
           </button>
           <button
             onClick={() => {
+              if (!flow.published) {
+                const error = validationError()
+                if (error) {
+                  setMessage(error)
+                  return
+                }
+              }
               const next = !flow.published
-              setFlow({ ...flow, published: next, status: next ? "active" : "draft" })
-              upsertWorkflow({ ...flow, published: next, status: next ? "active" : "draft" })
+              const updated = { ...flow, published: next, status: next ? "active" : "draft" as const }
+              setFlow(updated)
+              upsertWorkflow(updated)
               setSaved(true)
               setMessage(next ? "Workflow published" : "Workflow unpublished")
             }}
