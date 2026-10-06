@@ -368,11 +368,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
           db.execution.create({
             data: {
               id: executionId,
-              workspaceId: workspace.id,
+              workspaceId: storedWorkflow.workspaceId,
               workflowId,
               userId: authenticated?.user.id,
               status: "COMPLETED",
-              trigger: "Manual test",
+              trigger: internalTrigger || "Manual test",
               startedAt: new Date(startedAt),
               finishedAt: new Date(),
               steps: {
