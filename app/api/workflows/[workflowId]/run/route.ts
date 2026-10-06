@@ -272,7 +272,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
 
     visited.add(currentNodeId)
     ordered.push(currentNode)
-    const targets = outgoing.get(currentNodeId) ?? []
+    const targets: string[] = outgoing.get(currentNodeId) ?? []
 
     if (targets.length > 1) {
       return NextResponse.json({ ok: false, error: "Branching workflows are not supported by this execution engine yet." }, { status: 400 })
