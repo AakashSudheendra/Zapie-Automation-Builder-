@@ -1,18 +1,19 @@
 import React from 'react'
 import Sidebar from '@/components/sidebar'
-// import InfoBar from '@/components/infobar'
+import AuthGate from '@/components/global/auth-gate'
 
 type Props = { children: React.ReactNode }
 
-const Layout = (props: Props) => {
+const Layout = ({ children }: Props) => {
   return (
-    <div className="flex overflow-hidden h-screen">
-      <Sidebar />
-      <div className="w-full">
-        {/* <InfoBar /> */}
-        {props.children}
+    <AuthGate>
+      <div className="flex h-screen overflow-hidden">
+        <Sidebar />
+        <div className="min-w-0 w-full">
+          {children}
+        </div>
       </div>
-    </div>
+    </AuthGate>
   )
 }
 
