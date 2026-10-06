@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Check, ChevronDown, GripVertical, Minus, Play, Plus, Save, Trash2, X, ZoomIn } from "lucide-react"
 import Link from "next/link"
@@ -120,7 +120,7 @@ export default function Editor() {
     setSelected(id)
   }
 
-  const startDrag = (event: React.PointerEvent, item: WorkflowNode) => {
+  const startDrag = (event: ReactPointerEvent, item: WorkflowNode) => {
     if ((event.target as HTMLElement).closest("button")) return
     const canvas = canvasRef.current
     if (!canvas) return
