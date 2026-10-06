@@ -30,6 +30,8 @@ Zappie is a Next.js automation-builder application inspired by workflow products
 - Real HTTP request execution
 - Optional Slack incoming-webhook execution
 - Optional production email through Resend
+- Published workflow webhook trigger endpoint with secret validation
+- Retry/backoff for transient external integration failures
 - Conditional execution and bounded delays
 - graph-based execution that follows workflow edges rather than canvas position
 - Execution history and expandable step logs
@@ -92,6 +94,18 @@ npm run db:migrate
 The application creates a development workspace automatically when no authenticated session exists outside production. In production, workspace APIs require an authenticated server session. Accounts use bcrypt password hashing and random server-side session tokens stored only as SHA-256 hashes.
 
 The current authentication implementation is intentionally provider-independent. OAuth/SSO can be added later without changing the workspace data model.
+
+## Webhook triggers
+
+Publish a workflow with a Webhook trigger, then call:
+
+```text
+POST /api/webhooks/<workflow-id>
+x-zappie-webhook-secret: <ZAPPIE_WEBHOOK_SECRET>
+content-type: application/json
+```
+
+The webhook route accepts JSON payloads, verifies the shared server secret, requires the workflow to be published, and routes the event through the same graph-aware execution engine used by Test Run.
 
 ## Optional email configuration
 
