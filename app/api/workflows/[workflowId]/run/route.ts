@@ -49,6 +49,22 @@ async function fetchWithTimeout(url: URL | string, init: RequestInit, timeoutMs 
   }
 }
 
+async function fetchWithRetry(url: URL | string, init: RequestInit, timeoutMs = 10000, attempts = 3) {
+  let lastError: unknown
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    try {
+      const response = await fetchWithTimeout(url, init, timeoutMs)
+      if (response.ok || response.status < 500 || attempt === attempts) return response
+      lastError = new Error(`Remote server returned HTTP ${response.status}`)
+    } catch (error) {
+      lastError = error
+      if (attempt === attempts) throw error
+    }
+    await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** (attempt - 1)))
+  }
+  throw lastError instanceof Error ? lastError : new Error("Remote request failed.")
+}
+
 async function executeAction(title: string, config: Record<string, string>, input: Record<string, unknown>) {
   if (title === "HTTP Request") {
     const url = config.url
@@ -58,7 +74,7 @@ async function executeAction(title: string, config: Record<string, string>, inpu
     const method = (config.method || "POST").toUpperCase()
     const headers = parseHeaders(config.headers)
 
-    const response = await fetchWithTimeout(remoteUrl, {
+    const response = await fetchWithRetry(remoteUrl, {
       method,
       headers: { "content-type": "application/json", ...headers },
       body: ["GET", "HEAD"].includes(method) ? undefined : JSON.stringify(input),
@@ -91,7 +107,7 @@ async function executeAction(title: string, config: Record<string, string>, inpu
 
     const webhookUrl = validateRemoteUrl(webhookValue, "Slack webhook URL")
     const message = interpolate(config.message || "Zappie workflow executed.", input)
-    const response = await fetchWithTimeout(webhookUrl, {
+    const response = await fetchWithRetry(webhookUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ text: message }),
@@ -116,7 +132,7 @@ async function executeAction(title: string, config: Record<string, string>, inpu
       }
     }
 
-    const response = await fetchWithTimeout("https://api.resend.com/emails", {
+    const response = await fetchWithRetry("https://api.resend.com/emails", {
       method: "POST",
       headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
       body: JSON.stringify({
