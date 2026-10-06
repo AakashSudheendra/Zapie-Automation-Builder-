@@ -40,3 +40,14 @@ export async function GET() {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unable to load executions." }, { status: 503 })
   }
 }
+
+
+export async function DELETE() {
+  try {
+    const { workspace } = await getOrCreateDevelopmentWorkspace()
+    await db.execution.deleteMany({ where: { workspaceId: workspace.id } })
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unable to clear executions." }, { status: 503 })
+  }
+}
