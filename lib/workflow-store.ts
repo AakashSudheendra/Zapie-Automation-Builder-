@@ -171,3 +171,68 @@ export function saveExecution(execution: Execution) {
 export function clearExecutions() {
   localStorage.removeItem(executionKey)
 }
+
+
+export async function loadWorkflowsFromServer(): Promise<Workflow[] | null> {
+  if (typeof window === "undefined") return null
+  try {
+    const response = await fetch("/api/workflows", { cache: "no-store" })
+    if (!response.ok) return null
+    const data = await response.json()
+    if (!data.ok || !Array.isArray(data.workflows)) return null
+    saveWorkflows(data.workflows)
+    return data.workflows
+  } catch {
+    return null
+  }
+}
+
+export async function getWorkflowFromServer(id: string): Promise<Workflow | null> {
+  if (typeof window === "undefined") return null
+  try {
+    const response = await fetch(`/api/workflows/${id}`, { cache: "no-store" })
+    if (!response.ok) return null
+    const data = await response.json()
+    if (!data.ok || !data.workflow) return null
+    upsertLocalWorkflow(data.workflow)
+    return data.workflow
+  } catch {
+    return null
+  }
+}
+
+function upsertLocalWorkflow(workflow: Workflow) {
+  const items = loadWorkflows()
+  const index = items.findIndex((item) => item.id === workflow.id)
+  if (index < 0) items.unshift(workflow)
+  else items[index] = workflow
+  saveWorkflows(items)
+}
+
+export async function syncWorkflowToServer(workflow: Workflow): Promise<Workflow | null> {
+  if (typeof window === "undefined") return null
+  try {
+    const response = await fetch("/api/workflows", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workflow }),
+    })
+    if (!response.ok) return null
+    const data = await response.json()
+    if (!data.ok || !data.workflow) return null
+    upsertLocalWorkflow(data.workflow)
+    return data.workflow
+  } catch {
+    return null
+  }
+}
+
+export async function deleteWorkflowFromServer(id: string) {
+  if (typeof window === "undefined") return false
+  try {
+    const response = await fetch(`/api/workflows/${id}`, { method: "DELETE" })
+    return response.ok
+  } catch {
+    return false
+  }
+}
