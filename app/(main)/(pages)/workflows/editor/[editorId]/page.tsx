@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Check, ChevronDown, GripVertical, Minus, Play, Plus, Save, Trash2, X, ZoomIn } from "lucide-react"
 import Link from "next/link"
 import WorkflowConfigForm from "@/components/global/workflow-config-form"
@@ -18,8 +19,8 @@ const NODE_W = 256
 const NODE_H = 112
 
 export default function Editor() {
-  const params = useParamsSafe()
-  const router = useRouterSafe()
+  const params = useParams<{ editorId: string }>()
+  const router = useRouter()
   const canvasRef = useRef<HTMLDivElement>(null)
   const [flow, setFlow] = useState<Workflow | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
@@ -361,13 +362,3 @@ export default function Editor() {
   )
 }
 
-// Small wrappers keep the editor compatible with the existing Next.js client build.
-function useParamsSafe() {
-  const { useParams } = require("next/navigation") as typeof import("next/navigation")
-  return useParams<{ editorId: string }>()
-}
-
-function useRouterSafe() {
-  const { useRouter } = require("next/navigation") as typeof import("next/navigation")
-  return useRouter()
-}
