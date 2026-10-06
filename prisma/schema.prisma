@@ -42,6 +42,7 @@ model User {
   memberships   Membership[]
   credentials   Credential[]
   executions    Execution[]  @relation("UserExecutions")
+  sessions      Session[]
 }
 
 model Workspace {
@@ -168,4 +169,16 @@ model ExecutionStep {
 
   @@unique([executionId, step])
   @@index([executionId])
+}
+
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
