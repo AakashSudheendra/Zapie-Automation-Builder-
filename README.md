@@ -29,6 +29,7 @@ Zappie is a Next.js automation-builder application inspired by workflow products
 - Optional Slack incoming-webhook execution
 - Optional production email through Resend
 - Conditional execution and bounded delays
+- graph-based execution that follows workflow edges rather than canvas position
 - Execution history and expandable step logs
 - Billing and settings workspace UI
 - GitHub Actions typecheck/build workflow
@@ -74,7 +75,7 @@ npm run build
 npm run start
 ```
 
-The latest repository changes should be verified with these commands after pulling the current `main` branch. The GitHub integration available to this development session cannot execute npm against the remote repository, so a successful local command run is the final environment-specific verification.
+The repository does not currently commit a package lockfile, so use `npm install` rather than `npm ci` for the current project. Verify the latest branch with these commands. The GitHub integration available to this development session cannot execute npm against the remote repository, so a successful local command run is the final environment-specific verification.
 
 ## Optional email configuration
 
