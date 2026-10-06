@@ -1,7 +1,11 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -19,7 +23,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
   "include": [
@@ -31,5 +37,15 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "app/(main)/(pages)/billing/_actions/**",
+    "app/(main)/(pages)/billing/_components/**",
+    "app/(main)/(pages)/connections/_actions/**",
+    "app/(main)/(pages)/connections/_components/**",
+    "app/(main)/(pages)/settings/_components/**",
+    "app/(main)/(pages)/workflows/_actions/**",
+    "app/(main)/(pages)/workflows/editor/[editorId]/_actions/**",
+    "app/(main)/(pages)/workflows/editor/[editorId]/_components/**"
+  ]
 }
