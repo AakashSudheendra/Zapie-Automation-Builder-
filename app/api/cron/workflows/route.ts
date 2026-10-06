@@ -32,7 +32,7 @@ function cronMatches(expression: string, date: Date) {
 }
 
 export async function GET(request: Request) {
-  const secret = process.env.ZAPPIE_CRON_SECRET
+  const secret = process.env.CRON_SECRET
   const supplied = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "")
 
   if (!secret || supplied !== secret) {
