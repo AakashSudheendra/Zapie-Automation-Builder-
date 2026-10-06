@@ -178,7 +178,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
         if (ms > 0) await new Promise((resolve) => setTimeout(resolve, ms))
         output = { delayedMs: ms }
       } else if (node.type === "action") {
-        output = await executeAction(node.title, node.config, (current ?? payload) as Record<string, unknown>)
+        const actionInput = {
+          ...payload,
+          ...(current && typeof current === "object" ? (current as Record<string, unknown>) : {}),
+        }
+        output = await executeAction(node.title, node.config, actionInput)
       } else if (node.type === "trigger") {
         output = payload
       }
