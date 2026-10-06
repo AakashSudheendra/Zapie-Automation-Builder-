@@ -1,0 +1,4 @@
+"use client";
+import Link from "next/link";
+import {ArrowUpRight,Search} from "lucide-react";
+export default function AppHeader({title,action}:{title:string;action?:React.ReactNode}){return <header className="sticky top-0 z-20 flex h-20 items-center justify-between border-b border-white/10 bg-black/80 px-6 backdrop-blur-xl"><div><p className="text-xs font-medium uppercase tracking-[.2em] text-violet-300">Workspace</p><h1 className="text-2xl font-bold">{title}</h1></div><div className="flex items-center gap-3"><button className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/50 sm:flex"><Search size={14}/>Search</button>{action}<Link href="/" className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 text-white/60 hover:text-white"><ArrowUpRight size={17}/></Link></div></header>}
