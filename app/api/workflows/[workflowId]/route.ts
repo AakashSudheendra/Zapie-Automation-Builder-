@@ -23,7 +23,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ workflowId
       },
     })
   } catch (error) {
-    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Database unavailable" }, { status: 503 })
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Database unavailable" }, { status: error instanceof Error && error.message === "Authentication required." ? 401 : 503 })
   }
 }
 
