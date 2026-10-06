@@ -9,7 +9,17 @@ export default function Logs() {
   const [items, setItems] = useState<Execution[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
 
-  useEffect(() => setItems(loadExecutions()), [])
+  useEffect(() => {
+    const local = loadExecutions()
+    setItems(local)
+    fetch("/api/executions", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return
+        const data = await response.json()
+        if (data.ok) setItems(data.executions)
+      })
+      .catch(() => {})
+  }, [])
 
   const clear = () => {
     clearExecutions()
