@@ -190,8 +190,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
   } catch (error) {
     const requestHeaders = request.headers
     const internalSecret = requestHeaders.get("x-zappie-internal-secret")
-    const internalWebhook = requestHeaders.get("x-zappie-internal-trigger") === "webhook"
-    const trustedInternal = internalWebhook && !!process.env.ZAPPIE_WEBHOOK_SECRET && internalSecret === process.env.ZAPPIE_WEBHOOK_SECRET
+    const internalTrigger = requestHeaders.get("x-zappie-internal-trigger")
+    const expectedInternalSecret = internalTrigger === "cron" ? process.env.ZAPPIE_CRON_SECRET : process.env.ZAPPIE_WEBHOOK_SECRET
+    const trustedInternal = (internalTrigger === "webhook" || internalTrigger === "cron") && !!expectedInternalSecret && internalSecret === expectedInternalSecret
 
     if (process.env.NODE_ENV === "production" && !trustedInternal) {
       return NextResponse.json(
@@ -354,7 +355,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
 
     try {
       const internalSecret = request.headers.get("x-zappie-internal-secret")
-      const trustedInternal = request.headers.get("x-zappie-internal-trigger") === "webhook" && !!process.env.ZAPPIE_WEBHOOK_SECRET && internalSecret === process.env.ZAPPIE_WEBHOOK_SECRET
+      const internalTrigger = request.headers.get("x-zappie-internal-trigger")
+      const expectedInternalSecret = internalTrigger === "cron" ? process.env.ZAPPIE_CRON_SECRET : process.env.ZAPPIE_WEBHOOK_SECRET
+      const trustedInternal = (internalTrigger === "webhook" || internalTrigger === "cron") && !!expectedInternalSecret && internalSecret === expectedInternalSecret
       const authenticated = trustedInternal ? null : await getOrCreateDevelopmentWorkspace()
       const storedWorkflow = authenticated
         ? await db.workflow.findFirst({ where: { id: workflowId, workspaceId: authenticated.workspace.id } })
