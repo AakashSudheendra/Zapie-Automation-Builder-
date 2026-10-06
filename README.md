@@ -107,6 +107,10 @@ content-type: application/json
 
 The webhook route accepts JSON payloads, verifies the shared server secret, requires the workflow to be published, and routes the event through the same graph-aware execution engine used by Test Run.
 
+## Scheduled workflows
+
+`vercel.json` configures a minute-level Vercel Cron invocation of `/api/cron/workflows`. The endpoint is protected with `CRON_SECRET`, checks published Schedule triggers, and invokes the same execution engine. The current cron matcher supports five-field expressions with wildcards, lists, ranges and steps and evaluates them in UTC.
+
 ## Optional email configuration
 
 Copy `.env.example` to `.env.local` and configure:
