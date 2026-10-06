@@ -36,6 +36,28 @@ export default function Editor() {
       router.replace("/workflows")
       return
     }
+
+    const triggerIds = new Set<string>()
+    const duplicateTriggerIds = new Set<string>()
+    for (const item of w.nodes) {
+      if (item.type !== "trigger") continue
+      if (triggerIds.size === 0) triggerIds.add(item.id)
+      else duplicateTriggerIds.add(item.id)
+    }
+
+    if (duplicateTriggerIds.size) {
+      const cleaned = {
+        ...w,
+        nodes: w.nodes.filter((item) => !duplicateTriggerIds.has(item.id)),
+        edges: w.edges.filter((edge) => !duplicateTriggerIds.has(edge.source) && !duplicateTriggerIds.has(edge.target)),
+        updatedAt: new Date().toISOString(),
+      }
+      upsertWorkflow(cleaned)
+      setFlow(cleaned)
+      setMessage("Removed duplicate trigger steps. A workflow can have one trigger.")
+      return
+    }
+
     setFlow(w)
   }, [params.editorId, router])
 
