@@ -13,7 +13,7 @@ export async function GET() {
     })
     return NextResponse.json({ ok: true, credentials })
   } catch (error) {
-    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unable to load credentials." }, { status: 503 })
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unable to load credentials." }, { status: error instanceof Error && error.message === "Authentication required." ? 401 : 503 })
   }
 }
 
