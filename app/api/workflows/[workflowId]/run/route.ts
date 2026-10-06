@@ -171,7 +171,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
       })),
       edges: stored.edges.map((edge) => ({ id: edge.id, source: edge.source.nodeKey, target: edge.target.nodeKey })),
     }
-  } catch {
+  } catch (error) {
+    if (process.env.NODE_ENV === "production") {
+      return NextResponse.json(
+        { ok: false, error: error instanceof Error ? error.message : "Authentication or database access failed." },
+        { status: error instanceof Error && error.message === "Authentication required." ? 401 : 503 },
+      )
+    }
     // Local development remains usable before DATABASE_URL is configured.
   }
 
