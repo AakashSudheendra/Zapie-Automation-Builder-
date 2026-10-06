@@ -188,13 +188,44 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
       edges: stored.edges.map((edge) => ({ id: edge.id, source: edge.source.nodeKey, target: edge.target.nodeKey })),
     }
   } catch (error) {
-    if (process.env.NODE_ENV === "production") {
+    const requestHeaders = request.headers
+    const internalSecret = requestHeaders.get("x-zappie-internal-secret")
+    const internalWebhook = requestHeaders.get("x-zappie-internal-trigger") === "webhook"
+    const trustedInternal = internalWebhook && !!process.env.ZAPPIE_WEBHOOK_SECRET && internalSecret === process.env.ZAPPIE_WEBHOOK_SECRET
+
+    if (process.env.NODE_ENV === "production" && !trustedInternal) {
       return NextResponse.json(
         { ok: false, error: error instanceof Error ? error.message : "Authentication or database access failed." },
         { status: error instanceof Error && error.message === "Authentication required." ? 401 : 503 },
       )
     }
-    // Local development remains usable before DATABASE_URL is configured.
+
+    if (trustedInternal) {
+      const stored = await db.workflow.findFirst({
+        where: { id: workflowId, published: true },
+        include: { nodes: true, edges: { include: { source: true, target: true } } },
+      })
+      if (!stored) return NextResponse.json({ ok: false, error: "Published workflow not found." }, { status: 404 })
+      workflow = {
+        id: stored.id,
+        name: stored.name,
+        description: stored.description,
+        published: stored.published,
+        updatedAt: stored.updatedAt.toISOString(),
+        runs: stored.runs,
+        status: stored.status.toLowerCase() as Workflow["status"],
+        nodes: stored.nodes.map((node) => ({
+          id: node.nodeKey,
+          type: node.type.toLowerCase() as Workflow["nodes"][number]["type"],
+          title: node.title,
+          description: node.description,
+          x: node.x,
+          y: node.y,
+          config: (node.config ?? {}) as Record<string, string>,
+        })),
+        edges: stored.edges.map((edge) => ({ id: edge.id, source: edge.source.nodeKey, target: edge.target.nodeKey })),
+      }
+    }
   }
 
   if (!workflow || workflow.id !== workflowId) {
