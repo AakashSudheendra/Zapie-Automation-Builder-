@@ -21,6 +21,7 @@ const fields: Record<string, { key: string; label: string; placeholder: string }
   "Send Email": [
     { key: "to", label: "Recipient", placeholder: "team@example.com" },
     { key: "subject", label: "Subject", placeholder: "New workflow event" },
+    { key: "message", label: "Message", placeholder: "A new event was received." },
   ],
   Condition: [
     { key: "field", label: "Payload field", placeholder: "status" },
