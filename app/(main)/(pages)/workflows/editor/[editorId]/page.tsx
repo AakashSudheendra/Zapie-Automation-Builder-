@@ -288,7 +288,7 @@ export default function Editor() {
                 }
               }
               const next = !flow.published
-              const updated = { ...flow, published: next, status: next ? "active" : "draft" as const }
+              const updated = { ...flow, published: next, status: (next ? "active" : "draft") as Workflow["status"] }
               setFlow(updated)
               upsertWorkflow(updated)
               void syncWorkflowToServer(updated)
