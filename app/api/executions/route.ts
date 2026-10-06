@@ -37,7 +37,7 @@ export async function GET() {
       })),
     })
   } catch (error) {
-    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unable to load executions." }, { status: 503 })
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unable to load executions." }, { status: error instanceof Error && error.message === "Authentication required." ? 401 : 503 })
   }
 }
 
@@ -48,6 +48,6 @@ export async function DELETE() {
     await db.execution.deleteMany({ where: { workspaceId: workspace.id } })
     return NextResponse.json({ ok: true })
   } catch (error) {
-    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unable to clear executions." }, { status: 503 })
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unable to clear executions." }, { status: error instanceof Error && error.message === "Authentication required." ? 401 : 503 })
   }
 }
