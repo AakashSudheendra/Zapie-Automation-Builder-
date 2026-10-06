@@ -10,6 +10,6 @@ export async function DELETE(_: Request, { params }: { params: Promise<{ credent
     if (!result.count) return NextResponse.json({ ok: false, error: "Credential not found." }, { status: 404 })
     return NextResponse.json({ ok: true })
   } catch (error) {
-    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unable to delete credential." }, { status: 500 })
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unable to delete credential." }, { status: error instanceof Error && error.message === "Authentication required." ? 401 : 500 })
   }
 }
