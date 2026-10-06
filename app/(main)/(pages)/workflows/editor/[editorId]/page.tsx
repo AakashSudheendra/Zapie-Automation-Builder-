@@ -86,6 +86,10 @@ export default function Editor() {
   }
 
   const addNode = (type: WorkflowNodeType, title: string, description: string) => {
+    if (type === "trigger" && flow.nodes.some((item) => item.type === "trigger")) {
+      setMessage("A workflow can have one trigger. Add an action, condition, or delay instead.")
+      return
+    }
     const id = Math.random().toString(36).slice(2, 9)
     const parent = selected ? flow.nodes.find((item) => item.id === selected) : flow.nodes[flow.nodes.length - 1]
     const n: WorkflowNode = {
@@ -171,7 +175,7 @@ export default function Editor() {
 
   return (
     <div className="flex h-screen min-w-0 flex-col overflow-hidden bg-[#070709] text-white">
-      <header className="flex h-16 shrink-0 items-center justify-between gap-3 border-b border-white/10 px-3 sm:px-5">
+      <header className="flex h-16 min-w-0 shrink-0 items-center justify-between gap-3 overflow-hidden border-b border-white/10 px-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/workflows" className="rounded-lg p-2 text-white/50 hover:bg-white/10 hover:text-white">
             <ArrowLeft size={18} />
@@ -186,7 +190,7 @@ export default function Editor() {
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex min-w-0 shrink-0 items-center gap-2 overflow-x-auto pb-px">
           <button
             onClick={run}
             disabled={running}
@@ -220,8 +224,8 @@ export default function Editor() {
 
       {message && <div className="border-b border-white/10 bg-white/[.03] px-5 py-2 text-xs text-white/50">{message}</div>}
 
-      <div className="flex min-h-0 flex-1">
-        <aside className="hidden w-56 shrink-0 overflow-y-auto border-r border-white/10 bg-black/40 p-3 md:block">
+      <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[220px_minmax(0,1fr)_320px]">
+        <aside className="min-h-0 overflow-y-auto border-r border-white/10 bg-black/40 p-3 max-md:hidden">
           <p className="mb-3 px-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/30">Step library</p>
           <div className="space-y-2">
             {NODE_LIBRARY.map((item) => (
@@ -242,7 +246,8 @@ export default function Editor() {
           </div>
         </aside>
 
-        <main ref={canvasRef} className="relative min-w-0 flex-1 overflow-auto bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,.07)_1px,transparent_0)] [background-size:24px_24px]">
+        <main ref={canvasRef} className="relative min-h-0 min-w-0 overflow-hidden bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,.07)_1px,transparent_0)] [background-size:24px_24px]">
+          <div className="absolute inset-0 overflow-auto">
           <div className="sticky left-4 top-4 z-20 flex w-fit items-center gap-1 rounded-xl border border-white/10 bg-black/70 p-1 backdrop-blur">
             <button onClick={() => setZoom((value) => Math.max(0.65, value - 0.1))} className="rounded-lg p-2 text-white/60 hover:bg-white/10 hover:text-white"><Minus size={14} /></button>
             <span className="w-12 text-center text-[10px] text-white/50">{Math.round(zoom * 100)}%</span>
@@ -305,10 +310,11 @@ export default function Editor() {
               ))}
             </div>
           </div>
+        </div>
         </main>
 
         {selected && node && (
-          <aside className="w-72 shrink-0 overflow-y-auto border-l border-white/10 bg-black/70 p-4 lg:w-80">
+          <aside className="min-h-0 min-w-0 overflow-y-auto border-l border-white/10 bg-black/70 p-4">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-[10px] uppercase tracking-[0.2em] text-violet-300">{node.type}</p>
