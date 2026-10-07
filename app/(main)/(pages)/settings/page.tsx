@@ -10,6 +10,9 @@ export default function Settings() {
   const [name, setName] = useState("")
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState("")
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [passwordSaved, setPasswordSaved] = useState(false)
 
   useEffect(() => {
     fetch("/api/profile", { cache: "no-store" })
@@ -41,6 +44,25 @@ export default function Settings() {
     }
   }
 
+  const handlePasswordChange = async () => {
+    setError("")
+    setPasswordSaved(false)
+    try {
+      const response = await fetch("/api/profile/password", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Unable to change password.")
+      setCurrentPassword("")
+      setNewPassword("")
+      setPasswordSaved(true)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to change password.")
+    }
+  }
+
   return (
     <div className="min-h-screen">
       <AppHeader title="Settings" />
@@ -67,6 +89,24 @@ export default function Settings() {
 
           <button type="button" onClick={handleSave} className="mt-5 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-semibold">
             {saved ? "Saved" : "Save changes"}
+          </button>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-white/10 bg-white/[.03] p-6">
+          <h2 className="text-lg font-semibold">Security</h2>
+          <p className="mt-1 text-sm text-white/40">Change the password used to sign in to Zappie.</p>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <label className="block text-sm text-white/50">
+              Current password
+              <input type="password" value={currentPassword} onChange={(e) => { setCurrentPassword(e.target.value); setPasswordSaved(false) }} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-sm outline-none focus:border-violet-400/50" />
+            </label>
+            <label className="block text-sm text-white/50">
+              New password
+              <input type="password" value={newPassword} onChange={(e) => { setNewPassword(e.target.value); setPasswordSaved(false) }} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 p-3 text-sm outline-none focus:border-violet-400/50" />
+            </label>
+          </div>
+          <button type="button" onClick={handlePasswordChange} className="mt-5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-black">
+            {passwordSaved ? "Password updated" : "Change password"}
           </button>
         </section>
       </main>
