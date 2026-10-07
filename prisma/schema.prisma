@@ -8,11 +8,33 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum WorkflowStatus { DRAFT ACTIVE ERROR }
-enum NodeType { TRIGGER ACTION CONDITION DELAY }
-enum ExecutionStatus { RUNNING COMPLETED FAILED }
-enum MemberRole { OWNER ADMIN MEMBER }
-enum InvitationStatus { PENDING ACCEPTED REVOKED EXPIRED }
+enum WorkflowStatus {
+  DRAFT
+  ACTIVE
+  ERROR
+}
+enum NodeType {
+  TRIGGER
+  ACTION
+  CONDITION
+  DELAY
+}
+enum ExecutionStatus {
+  RUNNING
+  COMPLETED
+  FAILED
+}
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
 
 model User {
   id String @id @default(cuid())
