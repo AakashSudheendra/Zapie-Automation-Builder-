@@ -4,6 +4,28 @@ import { db } from "@/lib/db"
 
 type Params = { params: Promise<{ workspaceId: string }> }
 
+export async function DELETE(_: Request, { params }: Params) {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return NextResponse.json({ ok: false, error: "Authentication required." }, { status: 401 })
+
+    const { workspaceId } = await params
+    const membership = await db.membership.findUnique({
+      where: { userId_workspaceId: { userId: user.id, workspaceId } },
+    })
+    if (!membership) return NextResponse.json({ ok: false, error: "Workspace access denied." }, { status: 403 })
+    if (membership.role !== "OWNER") return NextResponse.json({ ok: false, error: "Only the workspace owner can delete it." }, { status: 403 })
+
+    const ownedCount = await db.membership.count({ where: { userId: user.id, role: "OWNER" } })
+    if (ownedCount <= 1) return NextResponse.json({ ok: false, error: "Create another workspace before deleting your only workspace." }, { status: 400 })
+
+    await db.workspace.delete({ where: { id: workspaceId } })
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Unable to delete workspace." }, { status: 500 })
+  }
+}
+
 export async function PATCH(request: Request, { params }: Params) {
   try {
     const user = await getCurrentUser()
