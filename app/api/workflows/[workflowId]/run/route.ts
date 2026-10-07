@@ -191,7 +191,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
     const requestHeaders = request.headers
     const internalSecret = requestHeaders.get("x-zappie-internal-secret")
     const internalTrigger = requestHeaders.get("x-zappie-internal-trigger")
-    const expectedInternalSecret = internalTrigger === "cron" ? process.env.ZAPPIE_CRON_SECRET : process.env.ZAPPIE_WEBHOOK_SECRET
+    const expectedInternalSecret = internalTrigger === "cron" ? process.env.CRON_SECRET : process.env.ZAPPIE_WEBHOOK_SECRET
     const trustedInternal = (internalTrigger === "webhook" || internalTrigger === "cron") && !!expectedInternalSecret && internalSecret === expectedInternalSecret
 
     if (process.env.NODE_ENV === "production" && !trustedInternal) {
