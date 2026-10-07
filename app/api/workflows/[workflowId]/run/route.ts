@@ -65,6 +65,35 @@ async function fetchWithRetry(url: URL | string, init: RequestInit, timeoutMs = 
   throw lastError instanceof Error ? lastError : new Error("Remote request failed.")
 }
 
+const PLAN_RUN_LIMITS: Record<string, number> = { FREE: 100, PRO: 10000, UNLIMITED: -1 }
+
+async function consumeRunCredit(workspaceId: string) {
+  const workspace = await db.workspace.findUnique({ where: { id: workspaceId } })
+  if (!workspace) throw new Error("Workspace not found.")
+
+  const now = new Date()
+  const nextPeriod = new Date(workspace.planPeriodStart)
+  nextPeriod.setMonth(nextPeriod.getMonth() + 1)
+
+  if (nextPeriod <= now) {
+    await db.workspace.update({
+      where: { id: workspaceId },
+      data: { planRuns: 1, planPeriodStart: now },
+    })
+    return
+  }
+
+  const limit = PLAN_RUN_LIMITS[workspace.plan] ?? PLAN_RUN_LIMITS.FREE
+  if (limit >= 0 && workspace.planRuns >= limit) {
+    throw new Error(`Monthly run limit reached for the ${workspace.plan} plan.`)
+  }
+
+  await db.workspace.update({
+    where: { id: workspaceId },
+    data: { planRuns: { increment: 1 } },
+  })
+}
+
 async function executeAction(title: string, config: Record<string, string>, input: Record<string, unknown>) {
   if (title === "HTTP Request") {
     const url = config.url
@@ -222,6 +251,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
 
     if (!stored) {
       return NextResponse.json({ ok: false, error: "Workflow not found." }, { status: 404 })
+    }
+
+    try {
+      await consumeRunCredit(stored.workspaceId)
+    } catch (error) {
+      return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Run limit reached." }, { status: 429 })
     }
 
     workflow = {
