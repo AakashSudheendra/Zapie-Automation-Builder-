@@ -31,9 +31,19 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
     }
 
     const contentType = request.headers.get("content-type") || ""
+    const rawBody = await request.text()
+    if (new TextEncoder().encode(rawBody).byteLength > 1024 * 1024) {
+      return NextResponse.json({ ok: false, error: "Webhook payload exceeds the 1 MB limit." }, { status: 413 })
+    }
+
     let payload: unknown = {}
-    if (contentType.includes("application/json")) payload = await request.json()
-    else payload = { body: await request.text() }
+    if (contentType.includes("application/json")) {
+      try {
+        payload = rawBody ? JSON.parse(rawBody) : {}
+      } catch {
+        return NextResponse.json({ ok: false, error: "Webhook body must contain valid JSON." }, { status: 400 })
+      }
+    } else payload = { body: rawBody }
 
     const runUrl = new URL(`/api/workflows/${workflowId}/run`, request.url)
     const response = await fetch(runUrl, {
