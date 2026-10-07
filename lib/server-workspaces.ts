@@ -1,13 +1,25 @@
+import { cookies } from "next/headers"
 import { db } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
 
 export async function getOrCreateDevelopmentWorkspace() {
   const authenticated = await getCurrentUser()
+
   if (authenticated) {
-    const membership = await db.membership.findFirst({
-      where: { userId: authenticated.id },
-      include: { workspace: true },
-    })
+    const cookieStore = await cookies()
+    const selectedId = cookieStore.get("zappie_workspace_id")?.value
+
+    const membership = selectedId
+      ? await db.membership.findFirst({
+          where: { userId: authenticated.id, workspaceId: selectedId },
+          include: { workspace: true },
+        })
+      : await db.membership.findFirst({
+          where: { userId: authenticated.id },
+          include: { workspace: true },
+          orderBy: { workspace: { createdAt: "asc" } },
+        })
+
     if (!membership) throw new Error("Authenticated user has no workspace.")
     return { user: authenticated, workspace: membership.workspace }
   }
@@ -26,6 +38,7 @@ export async function getOrCreateDevelopmentWorkspace() {
   const existing = await db.membership.findFirst({
     where: { userId: user.id },
     include: { workspace: true },
+    orderBy: { workspace: { createdAt: "asc" } },
   })
 
   if (existing) return { user, workspace: existing.workspace }
