@@ -44,7 +44,11 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { workspace } = await getOrCreateDevelopmentWorkspace()
+    const { user, workspace } = await getOrCreateDevelopmentWorkspace()
+    const membership = await db.membership.findUnique({ where: { userId_workspaceId: { userId: user.id, workspaceId: workspace.id } } })
+    if (!membership || (membership.role !== "OWNER" && membership.role !== "ADMIN" && membership.role !== "MEMBER")) {
+      return NextResponse.json({ ok: false, error: "Workspace access denied." }, { status: 403 })
+    }
     const body = await request.json()
     const workflow = body.workflow
     if (!workflow?.name || !Array.isArray(workflow.nodes)) {
