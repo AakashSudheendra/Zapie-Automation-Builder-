@@ -298,6 +298,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
         include: { nodes: true, edges: { include: { source: true, target: true } } },
       })
       if (!stored) return NextResponse.json({ ok: false, error: "Published workflow not found." }, { status: 404 })
+      try {
+        await consumeRunCredit(stored.workspaceId)
+      } catch (error) {
+        return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Run limit reached." }, { status: 429 })
+      }
       workflow = {
         id: stored.id,
         name: stored.name,
