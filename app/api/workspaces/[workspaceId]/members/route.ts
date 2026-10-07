@@ -141,6 +141,14 @@ export async function DELETE(request: Request, { params }: Params) {
     }
 
     const body = await request.json().catch(() => ({}))
+    const invitationId = typeof body.invitationId === "string" ? body.invitationId : ""
+    if (invitationId) {
+      const invitation = await db.invitation.findFirst({ where: { id: invitationId, workspaceId, status: "PENDING" } })
+      if (!invitation) return NextResponse.json({ ok: false, error: "Invitation not found." }, { status: 404 })
+      await db.invitation.update({ where: { id: invitationId }, data: { status: "REVOKED" } })
+      return NextResponse.json({ ok: true })
+    }
+
     const membershipId = typeof body.membershipId === "string" ? body.membershipId : ""
     const target = await db.membership.findFirst({ where: { id: membershipId, workspaceId } })
     if (!target) return NextResponse.json({ ok: false, error: "Member not found." }, { status: 404 })
