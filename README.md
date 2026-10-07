@@ -24,7 +24,9 @@ Zappie is a Next.js automation-builder application inspired by workflow products
 - Functional workflow templates persisted to the workspace
 - Connection workspace
 - PostgreSQL persistence through Prisma with browser storage used only as an offline UI fallback
-- Workspace membership model and server-side ownership checks
+- Workspace membership model, workspace switching and server-side ownership checks
+- Workspace member invitations with expiring invite links
+- Owner/Admin/Member role management and invitation revocation
 - Password authentication with hashed credentials and HttpOnly sessions
 - Test execution API
 - Real HTTP request execution
@@ -35,7 +37,8 @@ Zappie is a Next.js automation-builder application inspired by workflow products
 - Conditional execution and bounded delays
 - graph-based execution that follows workflow edges rather than canvas position
 - Execution history and expandable step logs
-- Billing and settings workspace UI
+- Persisted workspace billing plans and monthly run-limit tracking
+- Billing and settings workspace UI, including password changes
 - GitHub Actions typecheck/build workflow
 
 ## Architecture
@@ -93,7 +96,7 @@ npm run db:migrate
 
 The application creates a development workspace automatically when no authenticated session exists outside production. In production, workspace APIs require an authenticated server session. Accounts use bcrypt password hashing and random server-side session tokens stored only as SHA-256 hashes. Profile changes are persisted in PostgreSQL.
 
-The current authentication implementation is intentionally provider-independent. OAuth/SSO can be added later without changing the workspace data model.
+The current authentication implementation is intentionally provider-independent. Workspace invitations and role management are handled server-side with membership checks.
 
 ## Webhook triggers
 
@@ -137,9 +140,9 @@ The execution route validates remote URLs, blocks common local/metadata hosts, a
 
 Execution history is persisted in PostgreSQL and exposed through the Logs API. Browser localStorage remains only as a local UI fallback.
 
-## Important production boundary
+## Production boundary
 
-The project now has a functional multi-user workspace foundation with server authentication, PostgreSQL persistence, encrypted credentials, webhook/schedule triggers and persisted execution history. Background workers, OAuth authorization flows, billing providers and distributed rate limiting remain deployment-level enhancements.
+The project now has a functional multi-user workspace foundation with server authentication, PostgreSQL persistence, encrypted credentials, workspace switching, member invitations, role management, webhook/schedule triggers, persisted execution history and workspace run limits. Payment-provider checkout, OAuth authorization flows, durable background workers and distributed rate limiting remain deployment-level integrations that require external provider credentials/infrastructure.
 
 For a hosted multi-user deployment, the next infrastructure layer is:
 
