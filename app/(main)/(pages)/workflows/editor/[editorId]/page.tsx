@@ -425,6 +425,25 @@ export default function Editor() {
                 />
               </label>
 
+              {node.title === "Webhook" && (
+                <div className="rounded-xl border border-violet-400/15 bg-violet-500/5 p-3">
+                  <p className="text-xs font-medium text-violet-200">Webhook endpoint</p>
+                  <p className="mt-1 break-all text-[11px] leading-4 text-white/35">
+                    {typeof window !== "undefined" ? `${window.location.origin}/api/webhooks/${flow.id}` : `/api/webhooks/${flow.id}`}
+                  </p>
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}/api/webhooks/${flow.id}`
+                      void navigator.clipboard.writeText(url)
+                      setMessage("Webhook endpoint copied")
+                    }}
+                    className="mt-3 w-full rounded-lg border border-white/10 bg-white/[.04] py-2 text-[11px] font-medium text-white/70 hover:bg-white/[.08]"
+                  >
+                    Copy endpoint
+                  </button>
+                </div>
+              )}
+
               <div>
                 <p className="mb-2 text-xs text-white/40">Configuration</p>
                 <WorkflowConfigForm
