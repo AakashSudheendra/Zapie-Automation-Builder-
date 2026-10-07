@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/db"
+import { timingSafeEqual } from "node:crypto"
 
 export async function POST(request: Request, { params }: { params: Promise<{ workflowId: string }> }) {
   try {
@@ -7,7 +8,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
     const secret = process.env.ZAPPIE_WEBHOOK_SECRET
     const supplied = request.headers.get("x-zappie-webhook-secret")
 
-    if (!secret || !supplied || supplied !== secret) {
+    if (!secret || !supplied) {
+      return NextResponse.json({ ok: false, error: "Invalid webhook secret." }, { status: 401 })
+    }
+    const expected = Buffer.from(secret)
+    const provided = Buffer.from(supplied)
+    if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) {
       return NextResponse.json({ ok: false, error: "Invalid webhook secret." }, { status: 401 })
     }
 
@@ -17,6 +23,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
 
     if (!workflow) {
       return NextResponse.json({ ok: false, error: "Published workflow not found." }, { status: 404 })
+    }
+
+    const contentLength = Number(request.headers.get("content-length") || "0")
+    if (Number.isFinite(contentLength) && contentLength > 1024 * 1024) {
+      return NextResponse.json({ ok: false, error: "Webhook payload exceeds the 1 MB limit." }, { status: 413 })
     }
 
     const contentType = request.headers.get("content-type") || ""
