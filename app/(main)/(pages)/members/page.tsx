@@ -163,6 +163,21 @@ export default function MembersPage() {
                 <Mail size={15} className="text-white/30" />
                 <span className="flex-1 truncate text-xs text-white/60">{inv.email}</span>
                 <span className="text-[10px] uppercase text-white/25">{inv.role}</span>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!workspace || !confirm("Revoke this invitation?")) return
+                    await fetch(`/api/workspaces/${workspace.id}/members`, {
+                      method: "DELETE",
+                      headers: { "content-type": "application/json" },
+                      body: JSON.stringify({ invitationId: inv.id }),
+                    })
+                    await load()
+                  }}
+                  className="rounded-lg px-2 py-1 text-[10px] text-red-300/70 hover:bg-red-500/10"
+                >
+                  Revoke
+                </button>
               </div>)}
             </div>
           </section>
