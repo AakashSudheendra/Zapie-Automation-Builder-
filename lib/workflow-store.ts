@@ -54,6 +54,7 @@ export type Execution = {
   startedAt: string
   finishedAt: string
   trigger: string
+  error?: string
   steps: ExecutionStep[]
 }
 
