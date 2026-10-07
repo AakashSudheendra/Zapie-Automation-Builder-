@@ -146,6 +146,38 @@ async function executeAction(title: string, config: Record<string, string>, inpu
     return { delivered: true, channel: config.channel || "", message }
   }
 
+  if (title === "Discord Message") {
+    let webhookValue = config.webhookUrl
+
+    if (config.credentialId) {
+      try {
+        const { workspace } = await getOrCreateDevelopmentWorkspace()
+        const credential = await db.credential.findFirst({
+          where: { id: config.credentialId, workspaceId: workspace.id, provider: "discord" },
+        })
+        if (credential) {
+          const secret = decryptSecret<Record<string, string>>(credential.encrypted)
+          webhookValue = secret.webhookUrl || secret.url || secret.value
+        }
+      } catch {
+        // Fall back to an explicitly configured webhook URL.
+      }
+    }
+
+    if (!webhookValue) return { simulated: true, reason: "Connect a Discord credential or add a webhook URL." }
+
+    const webhookUrl = validateRemoteUrl(webhookValue, "Discord webhook URL")
+    const message = interpolate(config.message || "Zappie workflow executed.", input)
+    const response = await fetchWithRetry(webhookUrl, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ content: message }),
+    })
+
+    if (!response.ok) throw new Error(`Discord webhook returned HTTP ${response.status}`)
+    return { delivered: true, provider: "discord", message }
+  }
+
   if (title === "Send Email") {
     const to = config.to
     const subject = config.subject || "Zappie workflow notification"
