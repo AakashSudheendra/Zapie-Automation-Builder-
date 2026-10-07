@@ -191,10 +191,35 @@ export default function Editor() {
   }
 
   const duplicate = (source: WorkflowNode) => {
+    if (source.type === "trigger") {
+      setMessage("A workflow can only have one trigger. Duplicate an action, condition, or delay instead.")
+      return
+    }
+
     const id = Math.random().toString(36).slice(2, 9)
     const copy: WorkflowNode = { ...source, id, x: source.x + 40, y: source.y + 150 }
-    update({ nodes: [...flow.nodes, copy] })
+
+    const incoming = flow.edges.filter((edge) => edge.target === source.id)
+    const outgoing = flow.edges.filter((edge) => edge.source === source.id)
+    const withoutSourceEdges = flow.edges.filter((edge) => edge.source !== source.id && edge.target !== source.id)
+
+    const copiedIncoming = incoming.map((edge) => ({
+      id: `copy-in-${id}-${edge.source}`,
+      source: edge.source,
+      target: id,
+    }))
+    const copiedOutgoing = outgoing.map((edge) => ({
+      id: `copy-out-${id}-${edge.target}`,
+      source: id,
+      target: edge.target,
+    }))
+
+    update({
+      nodes: [...flow.nodes, copy],
+      edges: [...withoutSourceEdges, ...copiedIncoming, ...copiedOutgoing],
+    })
     setSelected(id)
+    setMessage("Step duplicated with its connections.")
   }
 
   const startDrag = (event: ReactPointerEvent, item: WorkflowNode) => {
