@@ -9,16 +9,18 @@ export async function getOrCreateDevelopmentWorkspace() {
     const cookieStore = await cookies()
     const selectedId = cookieStore.get("zappie_workspace_id")?.value
 
-    const membership = selectedId
+    const selectedMembership = selectedId
       ? await db.membership.findFirst({
           where: { userId: authenticated.id, workspaceId: selectedId },
           include: { workspace: true },
         })
-      : await db.membership.findFirst({
-          where: { userId: authenticated.id },
-          include: { workspace: true },
-          orderBy: { workspace: { createdAt: "asc" } },
-        })
+      : null
+
+    const membership = selectedMembership ?? await db.membership.findFirst({
+      where: { userId: authenticated.id },
+      include: { workspace: true },
+      orderBy: { workspace: { createdAt: "asc" } },
+    })
 
     if (!membership) throw new Error("Authenticated user has no workspace.")
     return { user: authenticated, workspace: membership.workspace }
