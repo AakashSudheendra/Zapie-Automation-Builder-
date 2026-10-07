@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Activity, BookTemplate, CreditCard, LayoutDashboard, Link2, LogOut, Settings, Workflow } from "lucide-react";
+import { Activity, BookTemplate, CreditCard, LayoutDashboard, Link2, LogOut, Settings, Workflow, Users } from "lucide-react";
 
 const links = [
   ["Dashboard", "/dashboard", LayoutDashboard],
@@ -11,6 +11,7 @@ const links = [
   ["Templates", "/templates", BookTemplate],
   ["Logs", "/logs", Activity],
   ["Billing", "/billing", CreditCard],
+  ["Members", "/members", Users],
   ["Settings", "/settings", Settings],
 ] as const;
 
