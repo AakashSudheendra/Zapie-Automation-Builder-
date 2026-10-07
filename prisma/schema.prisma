@@ -8,179 +8,173 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum WorkflowStatus {
-  DRAFT
-  ACTIVE
-  ERROR
-}
-
-enum NodeType {
-  TRIGGER
-  ACTION
-  CONDITION
-  DELAY
-}
-
-enum ExecutionStatus {
-  RUNNING
-  COMPLETED
-  FAILED
-}
-
-enum MemberRole {
-  OWNER
-  ADMIN
-  MEMBER
-}
+enum WorkflowStatus { DRAFT ACTIVE ERROR }
+enum NodeType { TRIGGER ACTION CONDITION DELAY }
+enum ExecutionStatus { RUNNING COMPLETED FAILED }
+enum MemberRole { OWNER ADMIN MEMBER }
+enum InvitationStatus { PENDING ACCEPTED REVOKED EXPIRED }
 
 model User {
-  id            String       @id @default(cuid())
-  email         String       @unique
-  name          String?
-  image         String?
-  passwordHash  String?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  memberships   Membership[]
-  credentials   Credential[]
-  executions    Execution[]  @relation("UserExecutions")
-  sessions      Session[]
+  id String @id @default(cuid())
+  email String @unique
+  name String?
+  image String?
+  passwordHash String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  memberships Membership[]
+  credentials Credential[]
+  executions Execution[] @relation("UserExecutions")
+  sessions Session[]
+  sentInvitations Invitation[] @relation("InvitationInviter")
+  receivedInvitations Invitation[] @relation("InvitationInvitee")
 }
 
 model Workspace {
-  id          String       @id @default(cuid())
-  name        String
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id String @id @default(cuid())
+  name String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
   memberships Membership[]
-  workflows   Workflow[]
+  workflows Workflow[]
   credentials Credential[]
-  executions  Execution[]
+  executions Execution[]
+  invitations Invitation[]
 }
 
 model Membership {
-  id          String     @id @default(cuid())
-  role        MemberRole @default(MEMBER)
-  userId      String
+  id String @id @default(cuid())
+  role MemberRole @default(MEMBER)
+  userId String
   workspaceId String
-  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  workspace   Workspace  @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   @@unique([userId, workspaceId])
   @@index([workspaceId])
 }
 
-model Workflow {
-  id          String         @id @default(cuid())
+model Invitation {
+  id String @id @default(cuid())
   workspaceId String
-  name        String
-  description String         @default("")
-  published   Boolean        @default(false)
-  status      WorkflowStatus @default(DRAFT)
-  runs        Int            @default(0)
-  version     Int            @default(1)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  workspace   Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  nodes       WorkflowNode[]
-  edges       WorkflowEdge[]
-  executions  Execution[]
+  inviterId String
+  inviteeId String?
+  email String
+  role MemberRole @default(MEMBER)
+  tokenHash String @unique
+  status InvitationStatus @default(PENDING)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  inviter User @relation("InvitationInviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  invitee User? @relation("InvitationInvitee", fields: [inviteeId], references: [id], onDelete: SetNull)
+  @@index([workspaceId, status])
+  @@index([email, status])
+}
 
+model Workflow {
+  id String @id @default(cuid())
+  workspaceId String
+  name String
+  description String @default("")
+  published Boolean @default(false)
+  status WorkflowStatus @default(DRAFT)
+  runs Int @default(0)
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  nodes WorkflowNode[]
+  edges WorkflowEdge[]
+  executions Execution[]
   @@index([workspaceId, updatedAt])
 }
 
 model WorkflowNode {
-  id          String       @id @default(cuid())
-  workflowId  String
-  nodeKey     String
-  type        NodeType
-  title       String
-  description String       @default("")
-  x           Float        @default(0)
-  y           Float        @default(0)
-  config      Json         @default("{}")
-  workflow    Workflow     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  outgoing    WorkflowEdge[] @relation("EdgeSource")
-  incoming    WorkflowEdge[] @relation("EdgeTarget")
-
+  id String @id @default(cuid())
+  workflowId String
+  nodeKey String
+  type NodeType
+  title String
+  description String @default("")
+  x Float @default(0)
+  y Float @default(0)
+  config Json @default("{}")
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  outgoing WorkflowEdge[] @relation("EdgeSource")
+  incoming WorkflowEdge[] @relation("EdgeTarget")
   @@unique([workflowId, nodeKey])
   @@index([workflowId])
 }
 
 model WorkflowEdge {
-  id         String       @id @default(cuid())
+  id String @id @default(cuid())
   workflowId String
-  sourceId   String
-  targetId   String
-  workflow   Workflow     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  source     WorkflowNode @relation("EdgeSource", fields: [sourceId], references: [id], onDelete: Cascade)
-  target     WorkflowNode @relation("EdgeTarget", fields: [targetId], references: [id], onDelete: Cascade)
-
+  sourceId String
+  targetId String
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  source WorkflowNode @relation("EdgeSource", fields: [sourceId], references: [id], onDelete: Cascade)
+  target WorkflowNode @relation("EdgeTarget", fields: [targetId], references: [id], onDelete: Cascade)
   @@unique([workflowId, sourceId, targetId])
   @@index([workflowId])
 }
 
 model Credential {
-  id          String    @id @default(cuid())
+  id String @id @default(cuid())
   workspaceId String
-  userId      String?
-  provider    String
-  label       String
-  encrypted   String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user        User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-
+  userId String?
+  provider String
+  label String
+  encrypted String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   @@index([workspaceId, provider])
 }
 
 model Execution {
-  id         String          @id @default(cuid())
+  id String @id @default(cuid())
   workspaceId String
   workflowId String
-  userId     String?
-  status     ExecutionStatus @default(RUNNING)
-  trigger    String
-  startedAt  DateTime        @default(now())
+  userId String?
+  status ExecutionStatus @default(RUNNING)
+  trigger String
+  startedAt DateTime @default(now())
   finishedAt DateTime?
-  error      String?
-  workspace  Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  workflow   Workflow        @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  user       User?           @relation("UserExecutions", fields: [userId], references: [id], onDelete: SetNull)
-  steps      ExecutionStep[]
-
+  error String?
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user User? @relation("UserExecutions", fields: [userId], references: [id], onDelete: SetNull)
+  steps ExecutionStep[]
   @@index([workspaceId, startedAt])
   @@index([workflowId, startedAt])
 }
 
 model ExecutionStep {
-  id          String     @id @default(cuid())
+  id String @id @default(cuid())
   executionId String
-  step        Int
-  nodeId      String
-  title       String
-  type        NodeType
-  status      String
-  startedAt   DateTime
-  finishedAt  DateTime
-  input       Json?
-  output      Json?
-  error       String?
-  execution   Execution  @relation(fields: [executionId], references: [id], onDelete: Cascade)
-
+  step Int
+  nodeId String
+  title String
+  type NodeType
+  status String
+  startedAt DateTime
+  finishedAt DateTime
+  input Json?
+  output Json?
+  error String?
+  execution Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
   @@unique([executionId, step])
   @@index([executionId])
 }
 
-
 model Session {
-  id        String   @id @default(cuid())
-  userId    String
-  tokenHash String   @unique
+  id String @id @default(cuid())
+  userId String
+  tokenHash String @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, expiresAt])
 }
