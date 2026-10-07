@@ -18,6 +18,9 @@ const fields: Record<string, { key: string; label: string; placeholder: string }
     { key: "channel", label: "Channel", placeholder: "#sales" },
     { key: "message", label: "Message", placeholder: "New lead: {{name}}" },
   ],
+  "Discord Message": [
+    { key: "message", label: "Message", placeholder: "New lead: {{name}}" },
+  ],
   "Send Email": [
     { key: "to", label: "Recipient", placeholder: "team@example.com" },
     { key: "subject", label: "Subject", placeholder: "New workflow event" },
@@ -45,7 +48,7 @@ export default function WorkflowConfigForm({ node, onChange }: Props) {
   const [credentials, setCredentials] = useState<Credential[]>([])
 
   useEffect(() => {
-    if (node.title !== "Slack Message") return
+    if (node.title !== "Slack Message" && node.title !== "Discord Message") return
     fetch("/api/credentials", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) return
@@ -58,9 +61,37 @@ export default function WorkflowConfigForm({ node, onChange }: Props) {
   if (!definitions.length) return <p className="text-xs text-white/30">This step has no additional configuration.</p>
 
   const slackCredentials = credentials.filter((credential) => credential.provider === "slack")
+  const discordCredentials = credentials.filter((credential) => credential.provider === "discord")
 
   return (
     <div className="space-y-3">
+      {node.title === "Discord Message" && (
+        <>
+          <label className="block text-xs text-white/45">
+            Saved Discord credential
+            <select
+              value={node.config.credentialId ?? ""}
+              onChange={(event) => onChange({ ...node.config, credentialId: event.target.value })}
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white outline-none focus:border-violet-400/50"
+            >
+              <option value="">Use webhook URL below / simulation</option>
+              {discordCredentials.map((credential) => <option key={credential.id} value={credential.id}>{credential.label}</option>)}
+            </select>
+          </label>
+          {!node.config.credentialId && (
+            <label className="block text-xs text-white/45">
+              Discord webhook URL
+              <input
+                value={node.config.webhookUrl ?? ""}
+                onChange={(event) => onChange({ ...node.config, webhookUrl: event.target.value })}
+                placeholder="https://discord.com/api/webhooks/..."
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white outline-none placeholder:text-white/20 focus:border-violet-400/50"
+              />
+            </label>
+          )}
+        </>
+      )}
+
       {node.title === "Slack Message" && (
         <label className="block text-xs text-white/45">
           Saved Slack credential
