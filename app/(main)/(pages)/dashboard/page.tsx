@@ -30,7 +30,7 @@ export default function Dashboard() {
     return () => { active = false }
   }, [])
 
-  const runs = executions.length > 0 ? executions.length : flows.reduce((a, x) => a + x.runs, 0)
+  const runs = flows.reduce((total, workflow) => total + workflow.runs, 0)
 
   return (
     <div>
