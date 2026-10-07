@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Building2, Check, Pencil, Plus, Users, X } from "lucide-react"
 import AppHeader from "@/components/global/app-header"
 
@@ -143,6 +144,7 @@ export default function WorkspacesPage() {
 
         <section className="mt-6">
           <div className="mb-3 flex items-center justify-between">
+            <Link href="/members" className="rounded-xl border border-white/10 px-3 py-2 text-xs text-white/60 hover:text-white">Manage members</Link>
             <h3 className="text-sm font-semibold text-white/80">Your workspaces</h3>
             <span className="text-xs text-white/30">{workspaces.length} total</span>
           </div>
