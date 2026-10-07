@@ -85,6 +85,18 @@ export default function WorkspacesPage() {
     setError("")
   }
 
+  const deleteWorkspace = async (workspaceId: string) => {
+    if (!confirm("Delete this workspace and all of its workflows, credentials and execution history? This cannot be undone.")) return
+    setError("")
+    const response = await fetch(`/api/workspaces/${workspaceId}`, { method: "DELETE" })
+    const data = await response.json()
+    if (!response.ok) {
+      setError(data.error || "Unable to delete workspace.")
+      return
+    }
+    await load()
+  }
+
   const renameWorkspace = async () => {
     if (!editingId || editingName.trim().length < 2) return
 
@@ -198,6 +210,11 @@ export default function WorkspacesPage() {
                       {!active && (
                         <button type="button" onClick={() => switchWorkspace(workspace.id)} className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black">
                           Switch workspace
+                        </button>
+                      )}
+                      {workspace.role === "OWNER" && editingId !== workspace.id && (
+                        <button type="button" onClick={() => deleteWorkspace(workspace.id)} className="rounded-xl border border-red-400/20 px-3 py-2 text-xs text-red-300/80 hover:bg-red-500/10">
+                          Delete
                         </button>
                       )}
                       {canEdit && editingId !== workspace.id && (
