@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Plus, Trash2, MoreHorizontal, Workflow as WorkflowIcon } from "lucide-react"
+import { Plus, Trash2, MoreHorizontal, Workflow as WorkflowIcon, Copy } from "lucide-react"
 import AppHeader from "@/components/global/app-header"
 import {
   deleteWorkflow,
@@ -48,6 +48,30 @@ export default function Workflows() {
     if (remote) setItems((current) => current.map((item) => item.id === remote.id ? remote : item))
   }
 
+  const duplicate = async (workflow: Workflow) => {
+    const nodeIdMap = new Map(workflow.nodes.map((node) => [node.id, `node-${Math.random().toString(36).slice(2, 9)}`]))
+    const copy: Workflow = {
+      ...workflow,
+      id: Math.random().toString(36).slice(2, 10),
+      name: `${workflow.name} copy`,
+      published: false,
+      status: "draft",
+      runs: 0,
+      updatedAt: new Date().toISOString(),
+      nodes: workflow.nodes.map((node) => ({ ...node, id: nodeIdMap.get(node.id)! })),
+      edges: workflow.edges.map((edge) => ({
+        ...edge,
+        id: `edge-${Math.random().toString(36).slice(2, 9)}`,
+        source: nodeIdMap.get(edge.source)!,
+        target: nodeIdMap.get(edge.target)!,
+      })),
+    }
+    upsertWorkflow(copy)
+    const remote = await syncWorkflowToServer(copy)
+    const saved = remote || copy
+    setItems((current) => [saved, ...current])
+  }
+
   const remove = async (id: string) => {
     if (!confirm("Delete this workflow?")) return
     deleteWorkflow(id)
@@ -88,6 +112,9 @@ export default function Workflows() {
               <div className="ml-4 flex items-center gap-2">
                 <button onClick={() => toggle(w)} className={`rounded-lg px-3 py-1.5 text-xs ${w.published ? "bg-emerald-500/10 text-emerald-300" : "bg-white/5 text-white/50"}`}>
                   {w.published ? "Published" : "Draft"}
+                </button>
+                <button onClick={() => duplicate(w)} className="rounded-lg p-2 text-white/35 hover:bg-white/10 hover:text-white" title="Duplicate workflow">
+                  <Copy size={16} />
                 </button>
                 <button onClick={() => remove(w.id)} className="rounded-lg p-2 text-white/35 hover:bg-red-500/10 hover:text-red-300">
                   <Trash2 size={16} />
