@@ -57,6 +57,7 @@ export default function LoginPage() {
             )}
             <Field icon={<Mail size={15} />} label="Email" value={email} onChange={setEmail} placeholder="you@example.com" type="email" />
             <Field icon={<LockKeyhole size={15} />} label="Password" value={password} onChange={setPassword} placeholder="At least 8 characters" type="password" />
+            {mode === "login" && <div className="-mt-2 text-right"><Link href="/forgot-password" className="text-[11px] text-violet-300/70 hover:text-violet-300">Forgot password?</Link></div>
 
             {error && <p className="rounded-xl border border-red-400/20 bg-red-500/5 p-3 text-xs text-red-300">{error}</p>}
 
