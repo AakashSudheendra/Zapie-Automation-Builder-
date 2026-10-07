@@ -56,6 +56,7 @@ Next.js App Router
 ├── Logs
 ├── Billing
 ├── Settings
+├── Workspaces / Members
 └── API
     └── /api/workflows/[workflowId]/run
         ├── Conditions
@@ -63,6 +64,10 @@ Next.js App Router
         ├── HTTP Requests
         ├── Slack Webhooks
         └── Resend Email
+    ├── /api/webhooks/[workflowId]
+    ├── /api/cron/workflows
+    ├── /api/workspaces/[workspaceId]/members
+    └── /api/health
 ```
 
 ## Run locally
