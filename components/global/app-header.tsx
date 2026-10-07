@@ -88,7 +88,7 @@ export default function AppHeader({ title, action }: { title: string; action?: R
 
               <div className="mt-1 space-y-1">
                 <Link
-                  href="/settings"
+                  href="/account"
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs text-white/60 hover:bg-white/5 hover:text-white"
                 >
