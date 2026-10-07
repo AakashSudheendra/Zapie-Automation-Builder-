@@ -1,13 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Trash2, CheckCircle2, XCircle, ChevronDown } from "lucide-react"
+import { Trash2, CheckCircle2, XCircle, ChevronDown, RotateCcw, Loader2 } from "lucide-react"
 import AppHeader from "@/components/global/app-header"
 import { clearExecutions, loadExecutions, type Execution } from "@/lib/workflow-store"
 
 export default function Logs() {
   const [items, setItems] = useState<Execution[]>([])
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [retrying, setRetrying] = useState<string | null>(null)
+  const [error, setError] = useState("")
 
   useEffect(() => {
     const local = loadExecutions()
@@ -20,6 +22,27 @@ export default function Logs() {
       })
       .catch(() => {})
   }, [])
+
+  const retry = async (execution: Execution) => {
+    setRetrying(execution.id)
+    setError("")
+    try {
+      const response = await fetch(`/api/workflows/${execution.workflowId}/run`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ payload: { source: "retry", previousExecutionId: execution.id } }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Retry failed.")
+      const refreshed = await fetch("/api/executions", { cache: "no-store" })
+      const refreshedData = await refreshed.json()
+      if (refreshedData.ok) setItems(refreshedData.executions)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Retry failed.")
+    } finally {
+      setRetrying(null)
+    }
+  }
 
   const clear = async () => {
     clearExecutions()
@@ -38,6 +61,7 @@ export default function Logs() {
         ) : undefined}
       />
       <main className="p-6">
+        {error && <div className="mb-5 rounded-xl border border-red-400/20 bg-red-500/5 p-3 text-xs text-red-300">{error}</div>}
         <div className="mb-5 grid gap-4 sm:grid-cols-3">
           <Metric label="Executions" value={items.length} />
           <Metric label="Successful" value={items.filter((x) => x.status === "completed").length} />
@@ -62,6 +86,17 @@ export default function Logs() {
 
               {expanded === execution.id && (
                 <div className="border-t border-white/10 bg-black/20 px-5 py-4">
+                  {execution.status === "failed" && (
+                    <button
+                      type="button"
+                      onClick={() => retry(execution)}
+                      disabled={retrying === execution.id}
+                      className="mb-3 inline-flex items-center gap-2 rounded-xl border border-violet-400/20 bg-violet-500/5 px-3 py-2 text-xs text-violet-300 disabled:opacity-50"
+                    >
+                      {retrying === execution.id ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} />}
+                      Retry execution
+                    </button>
+                  )}
                   <div className="space-y-2">
                     {execution.steps.map((step) => (
                       <div key={step.nodeId + step.step} className="flex items-center justify-between rounded-xl border border-white/5 bg-white/[.02] p-3">
