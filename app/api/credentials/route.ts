@@ -20,6 +20,11 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const { user, workspace } = await getOrCreateDevelopmentWorkspace()
+    const membership = await db.membership.findUnique({ where: { userId_workspaceId: { userId: user.id, workspaceId: workspace.id } } })
+    if (!membership || (membership.role !== "OWNER" && membership.role !== "ADMIN")) {
+      return NextResponse.json({ ok: false, error: "Only workspace owners and admins can manage credentials." }, { status: 403 })
+    }
+
     const body = await request.json()
     const provider = String(body.provider || "").trim()
     const label = String(body.label || provider).trim()
