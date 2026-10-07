@@ -62,6 +62,7 @@ export const NODE_LIBRARY: { type: WorkflowNodeType; title: string; description:
   { type: "trigger", title: "Schedule", description: "Run automatically on a schedule." },
   { type: "action", title: "Send Email", description: "Send an email notification." },
   { type: "action", title: "Slack Message", description: "Post a message to a Slack channel." },
+  { type: "action", title: "Discord Message", description: "Post a message through a Discord webhook." },
   { type: "action", title: "HTTP Request", description: "Call any REST endpoint." },
   { type: "condition", title: "Condition", description: "Continue only when a boolean rule matches." },
   { type: "delay", title: "Delay", description: "Wait before continuing to the next step." },
