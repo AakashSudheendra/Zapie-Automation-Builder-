@@ -274,9 +274,8 @@ export default function AppHeader({ title, action }: { title: string; action?: R
           )}
         </div>
       </div>
-    </header>
-  )
-}      {mobileOpen && (
+
+      {mobileOpen && (
         <div className="absolute left-3 right-3 top-[72px] z-50 rounded-2xl border border-white/10 bg-[#111114] p-2 shadow-2xl shadow-black/50 md:hidden">
           {[
             ["Dashboard", "/dashboard", LayoutDashboard],
@@ -301,3 +300,7 @@ export default function AppHeader({ title, action }: { title: string; action?: R
         </div>
       )}
 
+
+    </header>
+  )
+}
