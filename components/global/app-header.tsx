@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
-import { ArrowUpRight, ChevronDown, LogOut, Plus, Search, Settings, UserCircle, Layers3 } from "lucide-react"
+import { ArrowUpRight, ChevronDown, LogOut, Plus, Search, Settings, UserCircle, Layers3, Menu, X, LayoutDashboard, Workflow, Link2, BookTemplate, Activity, CreditCard, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 type User = { id: string; name: string | null; email: string }
@@ -18,6 +18,7 @@ export default function AppHeader({ title, action }: { title: string; action?: R
   const [creatingWorkspace, setCreatingWorkspace] = useState(false)
   const [newWorkspaceName, setNewWorkspaceName] = useState("")
   const [workspaceError, setWorkspaceError] = useState("")
+  const [mobileOpen, setMobileOpen] = useState(false)
   const workspaceRef = useRef<HTMLDivElement>(null)
   const accountRef = useRef<HTMLDivElement>(null)
 
@@ -205,6 +206,16 @@ export default function AppHeader({ title, action }: { title: string; action?: R
         </div>
       </div>
 
+      <button
+        type="button"
+        onClick={() => setMobileOpen((value) => !value)}
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/[.04] text-white/60 md:hidden"
+        aria-label="Open navigation"
+        aria-expanded={mobileOpen}
+      >
+        {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+      </button>
+
       <div className="flex min-w-0 items-center gap-2 sm:gap-3">
         <button className="hidden items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/50 sm:flex">
           <Search size={14} />Search
@@ -265,4 +276,28 @@ export default function AppHeader({ title, action }: { title: string; action?: R
       </div>
     </header>
   )
-}
+}      {mobileOpen && (
+        <div className="absolute left-3 right-3 top-[72px] z-50 rounded-2xl border border-white/10 bg-[#111114] p-2 shadow-2xl shadow-black/50 md:hidden">
+          {[
+            ["Dashboard", "/dashboard", LayoutDashboard],
+            ["Workflows", "/workflows", Workflow],
+            ["Connections", "/connections", Link2],
+            ["Templates", "/templates", BookTemplate],
+            ["Logs", "/logs", Activity],
+            ["Billing", "/billing", CreditCard],
+            ["Members", "/members", Users],
+            ["Settings", "/settings", Settings],
+          ].map(([name, href, Icon]) => (
+            <Link
+              key={href as string}
+              href={href as string}
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-3 rounded-xl px-3 py-3 text-xs text-white/60 hover:bg-white/5 hover:text-white"
+            >
+              <Icon size={16} />
+              {name as string}
+            </Link>
+          ))}
+        </div>
+      )}
+
