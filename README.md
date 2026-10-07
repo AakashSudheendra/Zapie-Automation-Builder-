@@ -21,9 +21,9 @@ Zappie is a Next.js automation-builder application inspired by workflow products
   - Send Email
   - Condition
   - Delay
-- Functional workflow templates
+- Functional workflow templates persisted to the workspace
 - Connection workspace
-- PostgreSQL persistence through Prisma with localStorage fallback
+- PostgreSQL persistence through Prisma with browser storage used only as an offline UI fallback
 - Workspace membership model and server-side ownership checks
 - Password authentication with hashed credentials and HttpOnly sessions
 - Test execution API
@@ -83,7 +83,7 @@ The repository does not currently commit a package lockfile, so use `npm install
 
 ## Database and authentication
 
-Set `DATABASE_URL` in `.env.local`, then run:
+Set `DATABASE_URL` and `DIRECT_URL` in `.env.local`, then run:
 
 ```bash
 npm install
@@ -91,7 +91,7 @@ npm run db:generate
 npm run db:migrate
 ```
 
-The application creates a development workspace automatically when no authenticated session exists outside production. In production, workspace APIs require an authenticated server session. Accounts use bcrypt password hashing and random server-side session tokens stored only as SHA-256 hashes.
+The application creates a development workspace automatically when no authenticated session exists outside production. In production, workspace APIs require an authenticated server session. Accounts use bcrypt password hashing and random server-side session tokens stored only as SHA-256 hashes. Profile changes are persisted in PostgreSQL.
 
 The current authentication implementation is intentionally provider-independent. OAuth/SSO can be added later without changing the workspace data model.
 
@@ -135,11 +135,11 @@ A test run sends a workflow definition and payload to the execution API. Nodes a
 
 The execution route validates remote URLs, blocks common local/metadata hosts, applies request timeouts and limits workflows to 50 steps.
 
-Execution history is currently stored in browser localStorage.
+Execution history is persisted in PostgreSQL and exposed through the Logs API. Browser localStorage remains only as a local UI fallback.
 
 ## Important production boundary
 
-The project is a **fully functional single-browser automation-builder prototype**, not yet a multi-tenant SaaS platform. LocalStorage is intentionally used for the current development phase.
+The project now has a functional multi-user workspace foundation with server authentication, PostgreSQL persistence, encrypted credentials, webhook/schedule triggers and persisted execution history. Background workers, OAuth authorization flows, billing providers and distributed rate limiting remain deployment-level enhancements.
 
 For a hosted multi-user deployment, the next infrastructure layer is:
 
