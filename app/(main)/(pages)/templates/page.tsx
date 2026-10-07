@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Check, Plus } from "lucide-react"
 import { useRouter } from "next/navigation"
 import AppHeader from "@/components/global/app-header"
-import { upsertWorkflow, type Workflow } from "@/lib/workflow-store"
+import { syncWorkflowToServer, upsertWorkflow, type Workflow } from "@/lib/workflow-store"
 
 const templates = [
   { name: "Lead alert", description: "Notify sales when a new lead arrives.", flow: "Webhook → Slack → Email", nodes: [["Webhook", "New lead received"], ["Slack Message", "Notify sales"], ["Send Email", "Send confirmation"]] },
@@ -43,6 +43,7 @@ export default function Templates() {
     }
     workflow.edges = workflow.nodes.slice(1).map((node, index) => ({ id: `edge-${index}`, source: workflow.nodes[index].id, target: node.id }))
     upsertWorkflow(workflow)
+    void syncWorkflowToServer(workflow)
     setCreated(template.name)
     setTimeout(() => router.push(`/workflows/editor/${workflow.id}`), 250)
   }
