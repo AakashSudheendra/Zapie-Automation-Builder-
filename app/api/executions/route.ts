@@ -22,6 +22,7 @@ export async function GET() {
         startedAt: execution.startedAt.toISOString(),
         finishedAt: (execution.finishedAt ?? execution.startedAt).toISOString(),
         trigger: execution.trigger,
+        error: execution.error,
         steps: execution.steps.map((step) => ({
           step: step.step,
           nodeId: step.nodeId,
