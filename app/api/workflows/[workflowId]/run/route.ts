@@ -171,7 +171,7 @@ async function persistExecution(
   const authenticated = trustedInternal ? null : await getOrCreateDevelopmentWorkspace()
   const storedWorkflow = authenticated
     ? await db.workflow.findFirst({ where: { id: workflowId, workspaceId: authenticated.workspace.id } })
-    : await db.workflow.findFirst({ where: { id: workflowId, published: true })
+    : await db.workflow.findFirst({ where: { id: workflowId, published: true } })
 
   if (!storedWorkflow) return
 
