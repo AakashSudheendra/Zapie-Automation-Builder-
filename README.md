@@ -92,6 +92,9 @@ Set `DATABASE_URL` and `DIRECT_URL` in `.env.local`, then run:
 npm install
 npm run db:generate
 npm run db:migrate
+
+# Production/CI database deployment
+npm run db:deploy
 ```
 
 The application creates a development workspace automatically when no authenticated session exists outside production. In production, workspace APIs require an authenticated server session. Accounts use bcrypt password hashing and random server-side session tokens stored only as SHA-256 hashes. Profile changes are persisted in PostgreSQL.
