@@ -151,6 +151,62 @@ async function executeAction(title: string, config: Record<string, string>, inpu
   return { simulated: true, action: title }
 }
 
+async function persistExecution(
+  request: Request,
+  workflowId: string,
+  executionId: string,
+  startedAt: string,
+  trace: ExecutionStep[],
+  status: "completed" | "failed",
+  error?: string,
+) {
+  const internalSecret = request.headers.get("x-zappie-internal-secret")
+  const internalTrigger = request.headers.get("x-zappie-internal-trigger")
+  const expectedInternalSecret = internalTrigger === "cron" ? process.env.CRON_SECRET : process.env.ZAPPIE_WEBHOOK_SECRET
+  const trustedInternal =
+    (internalTrigger === "webhook" || internalTrigger === "cron") &&
+    !!expectedInternalSecret &&
+    internalSecret === expectedInternalSecret
+
+  const authenticated = trustedInternal ? null : await getOrCreateDevelopmentWorkspace()
+  const storedWorkflow = authenticated
+    ? await db.workflow.findFirst({ where: { id: workflowId, workspaceId: authenticated.workspace.id } })
+    : await db.workflow.findFirst({ where: { id: workflowId, published: true })
+
+  if (!storedWorkflow) return
+
+  await db.$transaction([
+    db.execution.create({
+      data: {
+        id: executionId,
+        workspaceId: storedWorkflow.workspaceId,
+        workflowId,
+        userId: authenticated?.user.id,
+        status: status === "completed" ? "COMPLETED" : "FAILED",
+        trigger: internalTrigger || "Manual test",
+        startedAt: new Date(startedAt),
+        finishedAt: new Date(),
+        error: error || null,
+        steps: {
+          create: trace.map((step) => ({
+            step: step.step,
+            nodeId: step.nodeId,
+            title: step.title,
+            type: step.type.toUpperCase() as any,
+            status: step.status,
+            startedAt: new Date(step.startedAt),
+            finishedAt: new Date(step.finishedAt),
+            input: step.input === undefined ? undefined : JSON.parse(JSON.stringify(step.input)),
+            output: step.output === undefined ? undefined : JSON.parse(JSON.stringify(step.output)),
+            error: step.error,
+          })),
+        },
+      },
+    }),
+    db.workflow.update({ where: { id: workflowId }, data: { runs: { increment: 1 } } }),
+  ])
+}
+
 export async function POST(request: Request, { params }: { params: Promise<{ workflowId: string }> }) {
   const { workflowId } = await params
   const body = await request.json().catch(() => ({}))
@@ -354,48 +410,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
     const executionId = crypto.randomUUID()
 
     try {
-      const internalSecret = request.headers.get("x-zappie-internal-secret")
-      const internalTrigger = request.headers.get("x-zappie-internal-trigger")
-      const expectedInternalSecret = internalTrigger === "cron" ? process.env.ZAPPIE_CRON_SECRET : process.env.ZAPPIE_WEBHOOK_SECRET
-      const trustedInternal = (internalTrigger === "webhook" || internalTrigger === "cron") && !!expectedInternalSecret && internalSecret === expectedInternalSecret
-      const authenticated = trustedInternal ? null : await getOrCreateDevelopmentWorkspace()
-      const storedWorkflow = authenticated
-        ? await db.workflow.findFirst({ where: { id: workflowId, workspaceId: authenticated.workspace.id } })
-        : await db.workflow.findFirst({ where: { id: workflowId, published: true } })
-
-      if (storedWorkflow) {
-        await db.$transaction([
-          db.execution.create({
-            data: {
-              id: executionId,
-              workspaceId: storedWorkflow.workspaceId,
-              workflowId,
-              userId: authenticated?.user.id,
-              status: "COMPLETED",
-              trigger: internalTrigger || "Manual test",
-              startedAt: new Date(startedAt),
-              finishedAt: new Date(),
-              steps: {
-                create: trace.map((step) => ({
-                  step: step.step,
-                  nodeId: step.nodeId,
-                  title: step.title,
-                  type: step.type.toUpperCase() as any,
-                  status: step.status,
-                  startedAt: new Date(step.startedAt),
-                  finishedAt: new Date(step.finishedAt),
-                  input: step.input === undefined ? undefined : JSON.parse(JSON.stringify(step.input)),
-                  output: step.output === undefined ? undefined : JSON.parse(JSON.stringify(step.output)),
-                  error: step.error,
-                })),
-              },
-            },
-          }),
-          db.workflow.update({ where: { id: workflowId }, data: { runs: { increment: 1 } } }),
-        ])
-      }
+      await persistExecution(request, workflowId, executionId, startedAt, trace, "completed")
     } catch {
-      // Execution remains available locally even if persistence is unavailable.
+      // The API response remains available even if persistence is temporarily unavailable.
     }
 
     return NextResponse.json({
@@ -407,15 +424,24 @@ export async function POST(request: Request, { params }: { params: Promise<{ wor
       trace,
     })
   } catch (error) {
+    const executionId = crypto.randomUUID()
+    const message = error instanceof Error ? error.message : "Execution failed"
+
+    try {
+      await persistExecution(request, workflowId, executionId, startedAt, trace, "failed", message)
+    } catch {
+      // Preserve the execution error response even if persistence is unavailable.
+    }
+
     return NextResponse.json(
       {
         ok: false,
         workflowId,
-        executionId: crypto.randomUUID(),
+        executionId,
         status: "failed",
         triggeredAt: startedAt,
         trace,
-        error: error instanceof Error ? error.message : "Execution failed",
+        error: message,
       },
       { status: 500 },
     )
