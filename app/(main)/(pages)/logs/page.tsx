@@ -86,6 +86,11 @@ export default function Logs() {
 
               {expanded === execution.id && (
                 <div className="border-t border-white/10 bg-black/20 px-5 py-4">
+                  {execution.error && (
+                    <div className="mb-3 rounded-xl border border-red-400/15 bg-red-500/5 p-3 text-xs text-red-300">
+                      {execution.error}
+                    </div>
+                  )}
                   {execution.status === "failed" && (
                     <button
                       type="button"
