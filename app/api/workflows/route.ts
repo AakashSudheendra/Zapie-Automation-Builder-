@@ -51,8 +51,25 @@ export async function POST(request: Request) {
     }
     const body = await request.json()
     const workflow = body.workflow
-    if (!workflow?.name || !Array.isArray(workflow.nodes)) {
+    if (!workflow?.name || !Array.isArray(workflow.nodes) || !Array.isArray(workflow.edges)) {
       return NextResponse.json({ ok: false, error: "Invalid workflow payload." }, { status: 400 })
+    }
+    if (String(workflow.name).trim().length > 120 || String(workflow.description ?? "").length > 1000) {
+      return NextResponse.json({ ok: false, error: "Workflow name or description is too long." }, { status: 400 })
+    }
+    if (workflow.nodes.length < 1 || workflow.nodes.length > 50 || workflow.edges.length > 100) {
+      return NextResponse.json({ ok: false, error: "Workflow size is outside the supported limits." }, { status: 400 })
+    }
+    const nodeIds = new Set(workflow.nodes.map((node: any) => String(node.id)))
+    if (nodeIds.size !== workflow.nodes.length || workflow.nodes.some((node: any) => !node.id || !node.title || !["trigger", "action", "condition", "delay"].includes(String(node.type).toLowerCase()))) {
+      return NextResponse.json({ ok: false, error: "Workflow contains invalid nodes." }, { status: 400 })
+    }
+    if (workflow.edges.some((edge: any) => !edge.source || !edge.target || !nodeIds.has(String(edge.source)) || !nodeIds.has(String(edge.target)) || String(edge.source) === String(edge.target))) {
+      return NextResponse.json({ ok: false, error: "Workflow contains invalid connections." }, { status: 400 })
+    }
+    const triggerCount = workflow.nodes.filter((node: any) => String(node.type).toLowerCase() === "trigger").length
+    if (triggerCount !== 1) {
+      return NextResponse.json({ ok: false, error: "A workflow must contain exactly one trigger." }, { status: 400 })
     }
 
     const saved = await db.$transaction(async (tx) => {
@@ -65,7 +82,7 @@ export async function POST(request: Request) {
               description: workflow.description ?? "",
               published: Boolean(workflow.published),
               status: String(workflow.status || "draft").toUpperCase() as any,
-              runs: Number(workflow.runs || 0),
+              runs: existing.runs,
               version: { increment: 1 },
             },
           })
@@ -77,7 +94,7 @@ export async function POST(request: Request) {
               description: workflow.description ?? "",
               published: Boolean(workflow.published),
               status: String(workflow.status || "draft").toUpperCase() as any,
-              runs: Number(workflow.runs || 0),
+              runs: 0,
             },
           })
 
