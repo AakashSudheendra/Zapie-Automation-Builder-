@@ -142,6 +142,7 @@ A test run sends a workflow definition and payload to the execution API. Nodes a
 - **Delay:** waits for a bounded duration of up to 5 seconds per step.
 - **HTTP Request:** performs a real HTTP request when configured.
 - **Slack Message:** posts to a Slack incoming webhook when configured.
+- **Discord Message:** posts to a Discord webhook when configured.
 - **Send Email:** sends through Resend when the required environment variables and recipient exist; otherwise returns a provider-required simulation result.
 
 The execution route validates remote URLs, blocks common local/metadata hosts, applies request timeouts and limits workflows to 50 steps.
