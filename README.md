@@ -177,6 +177,10 @@ Logs / Monitoring
 
 That layer is required for durable webhooks, real cron scheduling, multi-user isolation, OAuth connections and background execution.
 
+## Deployment
+
+See `DEPLOYMENT.md` for PostgreSQL migrations, Vercel cron configuration, secrets and production security requirements.
+
 ## License
 
 This project is for educational and development use.
