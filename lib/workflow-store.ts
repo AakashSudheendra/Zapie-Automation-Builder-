@@ -124,7 +124,7 @@ export function deleteWorkflow(id: string) {
 
 export function defaultConnections(): Connection[] {
   return [
-    { id: "google", name: "Google Drive", description: "Watch files and folders and trigger workflows.", icon: "G", connected: true, lastSync: "Just now" },
+    { id: "google", name: "Google Drive", description: "Watch files and folders and trigger workflows.", icon: "G", connected: false },
     { id: "slack", name: "Slack", description: "Send workflow notifications to your team.", icon: "S", connected: false },
     { id: "discord", name: "Discord", description: "Send automated messages through webhooks.", icon: "D", connected: false },
     { id: "notion", name: "Notion", description: "Create and update pages and databases.", icon: "N", connected: false },
