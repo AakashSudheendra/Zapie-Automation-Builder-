@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getCurrentUser, verifyPassword, hashPassword } from "@/lib/auth"
+import { db } from "@/lib/db"
 
 export async function PATCH(request: Request) {
   try {
@@ -28,7 +29,7 @@ export async function PATCH(request: Request) {
     if (!valid) return NextResponse.json({ ok: false, error: "Current password is incorrect." }, { status: 400 })
 
     const passwordHash = await hashPassword(newPassword)
-    await (await import("@/lib/db")).db.user.update({
+    await db.user.update({
       where: { id: user.id },
       data: { passwordHash },
     })
