@@ -16,7 +16,7 @@ export default function Templates() {
   const router = useRouter()
   const [created, setCreated] = useState<string | null>(null)
 
-  const useTemplate = (template: (typeof templates)[number]) => {
+  const useTemplate = async (template: (typeof templates)[number]) => {
     const now = new Date().toISOString()
     const workflow: Workflow = {
       id: Math.random().toString(36).slice(2, 10),
@@ -43,9 +43,10 @@ export default function Templates() {
     }
     workflow.edges = workflow.nodes.slice(1).map((node, index) => ({ id: `edge-${index}`, source: workflow.nodes[index].id, target: node.id }))
     upsertWorkflow(workflow)
-    void syncWorkflowToServer(workflow)
     setCreated(template.name)
-    setTimeout(() => router.push(`/workflows/editor/${workflow.id}`), 250)
+    const saved = await syncWorkflowToServer(workflow)
+    if (saved) upsertWorkflow(saved)
+    router.push(`/workflows/editor/${workflow.id}`)
   }
 
   return (
